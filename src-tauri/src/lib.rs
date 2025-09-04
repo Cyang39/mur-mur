@@ -200,8 +200,16 @@ async fn open_app_data_directory(app_handle: tauri::AppHandle) -> Result<(), Str
     
     // 在 macOS 上使用 open 命令打开 Finder
     let shell = app_handle.shell();
-    match shell.command("open")
-        .args([app_dir.to_string_lossy().as_ref()])
+    let path_str = app_dir.to_string_lossy().to_string();
+    let command = if cfg!(target_os = "windows") {
+        "explorer"
+    } else if cfg!(target_os = "linux") {
+        "xdg-open"
+    } else {
+        "open"
+    };
+    match shell.command(command)
+        .args([&path_str])
         .output()
         .await {
         Ok(output) => {
@@ -403,32 +411,38 @@ async fn process_media_file(
 
 #[tauri::command]
 async fn select_directory(app_handle: tauri::AppHandle) -> Result<Option<String>, String> {
-    use tauri_plugin_shell::ShellExt;
-    
-    // 使用系统对话框选择目录
-    let shell = app_handle.shell();
-    match shell.command("osascript")
-        .args(["-e", "choose folder with prompt \"选择目录\" as string"])
-        .output()
-        .await {
-        Ok(output) => {
-            if output.status.success() {
-                let path = String::from_utf8_lossy(&output.stdout)
-                    .trim()
-                    .replace("alias ", "")
-                    .replace(":", "/")
-                    .replace("Macintosh HD", "");
-                let clean_path = if path.starts_with('/') {
-                    path
-                } else {
-                    format!("/{}", path)
-                };
-                Ok(Some(clean_path))
-            } else {
-                Ok(None) // 用户取消选择
-            }
-        }
-        Err(e) => Err(format!("选择目录失败: {}", e))
+    use tauri_plugin_dialog::{DialogExt, FilePath};
+    use tokio::sync::oneshot;
+
+    // 使用 Tauri v2 对话框插件，跨平台选择目录（Windows/macOS/Linux）
+    let (tx, rx) = oneshot::channel::<Option<String>>();
+
+    app_handle
+        .dialog()
+        .file()
+        .set_title("选择目录")
+        .pick_folder(move |folder| {
+            let selected = folder.and_then(|fp| match fp {
+                FilePath::Path(p) => Some(p.to_string_lossy().to_string()),
+                FilePath::Url(u) => {
+                    // 处理 file:// URL，尽量转为本地路径
+                    let s = u.to_string();
+                    if let Some(rest) = s.strip_prefix("file://") {
+                        // Windows 可能是 file:///C:/...
+                        let rest = if rest.starts_with('/') { &rest[1..] } else { rest };
+                        Some(rest.to_string())
+                    } else {
+                        // 其他协议不支持
+                        None
+                    }
+                }
+            });
+            let _ = tx.send(selected);
+        });
+
+    match rx.await {
+        Ok(opt) => Ok(opt),        // Some(path) 或 None（用户取消）
+        Err(e) => Err(format!("选择目录失败: {}", e)),
     }
 }
 
@@ -611,7 +625,23 @@ async fn check_model_exists(
     let whisper_models_path = settings.whisper_models_path
         .ok_or("请在设置中配置 Whisper Models 路径")?;
     
-    let model_file = std::path::Path::new(&whisper_models_path).join(&model_name);
+    // 兼容不同平台/来源的路径字符串（可能来自旧实现或 file:// 前缀）
+    let mut base = whisper_models_path.trim().to_string();
+    if base.starts_with("file://") {
+        base = base[7..].to_string(); // 去掉前缀
+        // Windows 的 file URL 可能以 "/C:/" 开头，去掉首个 '/'
+        if base.starts_with('/') {
+            let bytes = base.as_bytes();
+            if bytes.len() > 2 && bytes[1].is_ascii_alphabetic() && bytes[2] == b':' {
+                base = base[1..].to_string();
+            }
+        }
+    }
+    // 去除首尾引号
+    base = base.trim_matches('"').to_string();
+
+    let base_path = std::path::PathBuf::from(base);
+    let model_file = base_path.join(&model_name);
     Ok(model_file.exists())
 }
 
@@ -698,6 +728,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             process_media_file, 
             select_directory, 
