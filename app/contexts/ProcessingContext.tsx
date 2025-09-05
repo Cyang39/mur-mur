@@ -3,9 +3,17 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { listen } from '@tauri-apps/api/event';
 
+type SelectedFileInfo = {
+  name: string;
+  size: number;
+  type: string;
+  path?: string | null;
+  blob?: File | null;
+};
+
 interface ProcessingState {
   // 文件相关状态
-  selectedFile: File | null;
+  selectedFile: SelectedFileInfo | null;
   currentAudioPath: string | null;
   
   // 处理状态
@@ -31,7 +39,7 @@ interface ProcessingContextType {
   updateState: (updates: Partial<ProcessingState>) => void;
   resetState: () => void;
   addWhisperOutput: (output: string) => void;
-  setProcessingFile: (file: File | null) => void;
+  setProcessingFile: (file: SelectedFileInfo | null) => void;
   startTimer: () => void;
   stopTimer: () => void;
   resetTimer: () => void;
@@ -80,7 +88,7 @@ export function ProcessingProvider({ children }: { children: ReactNode }) {
   };
 
   // 设置处理文件的函数
-  const setProcessingFile = (file: File | null) => {
+  const setProcessingFile = (file: SelectedFileInfo | null) => {
     setState(prev => ({ ...prev, selectedFile: file }));
   };
 

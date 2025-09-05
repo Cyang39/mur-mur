@@ -70,6 +70,20 @@ struct SystemInfo {
     tauri_version: String,
 }
 
+// 简单格式化命令行为字符串，便于日志打印
+fn format_cmd_with_args(cmd: &str, args: &[String]) -> String {
+    let mut parts: Vec<String> = Vec::with_capacity(args.len() + 1);
+    parts.push(cmd.to_string());
+    for a in args {
+        if a.contains(' ') || a.contains('"') {
+            parts.push(format!("\"{}\"", a.replace('"', "\\\"")));
+        } else {
+            parts.push(a.clone());
+        }
+    }
+    parts.join(" ")
+}
+
 // 计算目录大小
 fn calculate_directory_size(dir_path: &std::path::Path) -> u64 {
     let mut total_size = 0u64;
@@ -136,14 +150,21 @@ fn extract_progress_from_whisper_output(line: &str) -> Option<f64> {
 // 获取视频时长
 async fn get_video_duration(app_handle: &tauri::AppHandle, video_path: &str) -> Option<f64> {
     use tauri_plugin_shell::ShellExt;
+    use tokio::time::{timeout, Duration};
     
     let ffmpeg_sidecar = app_handle.shell().sidecar("ffmpeg").ok()?;
-    
-    let result = ffmpeg_sidecar
-        .args(["-i", video_path, "-f", "null", "-"])
-        .output()
-        .await
-        .ok()?;
+    // 仅探测媒体信息，不进行解码/写出，避免大文件耗时
+    let args = vec![
+        "-hide_banner".to_string(),
+        "-i".to_string(),
+        video_path.to_string(),
+    ];
+    println!("执行探测命令: {}", format_cmd_with_args("ffmpeg", &args));
+    let fut = ffmpeg_sidecar.args(&args).output();
+    let result = match timeout(Duration::from_secs(8), fut).await {
+        Ok(Ok(output)) => output,
+        _ => return None,
+    };
     
     let stderr = String::from_utf8_lossy(&result.stderr);
     
@@ -230,7 +251,9 @@ async fn get_ffmpeg_version(app_handle: &tauri::AppHandle) -> String {
     
     match app_handle.shell().sidecar("ffmpeg") {
         Ok(cmd) => {
-            match cmd.args(["-version"]).output().await {
+            let args = vec!["-version".to_string()];
+            println!("执行命令: {}", format_cmd_with_args("ffmpeg", &args));
+            match cmd.args(&args).output().await {
                 Ok(output) => {
                     if output.status.success() {
                         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -381,10 +404,8 @@ async fn process_media_file(
         .map_err(|e| format!("无法获取 ffmpeg sidecar: {}", e))?;
     
     // 执行 ffmpeg 命令
-    let ffmpeg_result = ffmpeg_sidecar
-        .args(&args)
-        .output()
-        .await;
+    println!("执行命令: {}", format_cmd_with_args("ffmpeg", &args));
+    let ffmpeg_result = ffmpeg_sidecar.args(&args).output().await;
     
     // 删除临时输入文件
     let _ = std::fs::remove_file(&input_path);
@@ -443,6 +464,150 @@ async fn select_directory(app_handle: tauri::AppHandle) -> Result<Option<String>
     match rx.await {
         Ok(opt) => Ok(opt),        // Some(path) 或 None（用户取消）
         Err(e) => Err(format!("选择目录失败: {}", e)),
+    }
+}
+
+#[tauri::command]
+async fn select_media_file(app_handle: tauri::AppHandle) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::{DialogExt, FilePath};
+    use tokio::sync::oneshot;
+
+    let (tx, rx) = oneshot::channel::<Option<String>>();
+
+    let mut builder = app_handle.dialog().file();
+    builder = builder.set_title("选择视频或音频文件");
+    // 常见媒体扩展名
+    builder = builder.add_filter(
+        "媒体文件",
+        &["mp4", "mov", "mkv", "avi", "webm", "m4v", "mp3", "wav", "m4a", "flac", "aac", "ogg", "opus"],
+    );
+
+    builder.pick_file(move |file| {
+        let selected = file.and_then(|fp| match fp {
+            FilePath::Path(p) => Some(p.to_string_lossy().to_string()),
+            FilePath::Url(u) => {
+                let s = u.to_string();
+                if let Some(rest) = s.strip_prefix("file://") {
+                    let rest = if rest.starts_with('/') { &rest[1..] } else { rest };
+                    Some(rest.to_string())
+                } else {
+                    None
+                }
+            }
+        });
+        let _ = tx.send(selected);
+    });
+
+    match rx.await {
+        Ok(opt) => Ok(opt),
+        Err(e) => Err(format!("选择文件失败: {}", e)),
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct FileInfo {
+    name: String,
+    size: u64,
+    kind: String,
+}
+
+fn guess_media_kind(path: &std::path::Path) -> String {
+    let ext = path
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    let video_exts = ["mp4", "mov", "mkv", "avi", "webm", "m4v"];
+    let audio_exts = ["mp3", "wav", "m4a", "flac", "aac", "ogg", "opus"];
+    if video_exts.contains(&ext.as_str()) {
+        format!("video/{}", ext)
+    } else if audio_exts.contains(&ext.as_str()) {
+        format!("audio/{}", ext)
+    } else {
+        "application/octet-stream".to_string()
+    }
+}
+
+#[tauri::command]
+async fn get_file_info(_app_handle: tauri::AppHandle, path: String) -> Result<FileInfo, String> {
+    let p = std::path::Path::new(&path);
+    let name = p
+        .file_name()
+        .and_then(|s| s.to_str())
+        .ok_or("无效的文件路径")?
+        .to_string();
+    let meta = std::fs::metadata(&p).map_err(|e| format!("读取文件信息失败: {}", e))?;
+    let size = meta.len();
+    let kind = guess_media_kind(&p);
+    Ok(FileInfo { name, size, kind })
+}
+
+#[tauri::command]
+async fn process_media_file_from_path(
+    app_handle: tauri::AppHandle,
+    input_path: String,
+) -> Result<ProcessResult, String> {
+    use tauri_plugin_shell::ShellExt;
+
+    // 获取应用程序目录
+    let app_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app directory: {}", e))?;
+
+    // 创建 temp 目录
+    let temp_dir = app_dir.join("temp");
+    if !temp_dir.exists() {
+        std::fs::create_dir_all(&temp_dir)
+            .map_err(|e| format!("Failed to create temp directory: {}", e))?;
+    }
+
+    // 基于输入文件名生成输出 wav 名称
+    let file_stem = std::path::Path::new(&input_path)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("audio");
+    let output_filename = format!("{}.wav", file_stem);
+    let output_path = temp_dir.join(&output_filename);
+
+    // 获取时长
+    let duration = get_video_duration(&app_handle, &input_path).await;
+
+    // 执行 ffmpeg 转码
+    let ffmpeg_sidecar = app_handle
+        .shell()
+        .sidecar("ffmpeg")
+        .map_err(|e| format!("无法获取 ffmpeg sidecar: {}", e))?;
+
+    let args = vec![
+        "-i".to_string(),
+        input_path.clone(),
+        "-ar".to_string(),
+        "16000".to_string(),
+        "-ac".to_string(),
+        "1".to_string(),
+        output_path.to_string_lossy().to_string(),
+        "-y".to_string(),
+    ];
+
+    println!("执行命令: {}", format_cmd_with_args("ffmpeg", &args));
+    let ffmpeg_result = ffmpeg_sidecar.args(&args).output().await;
+
+    match ffmpeg_result {
+        Ok(output) => {
+            if output.status.success() {
+                Ok(ProcessResult {
+                    success: true,
+                    message: "文件转换成功，准备开始语音识别...".to_string(),
+                    output_path: Some(output_path.to_string_lossy().to_string()),
+                    duration_seconds: duration,
+                })
+            } else {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                Err(format!("FFmpeg 执行失败: {}", stderr))
+            }
+        }
+        Err(e) => Err(format!("无法执行 ffmpeg 命令: {}", e)),
     }
 }
 
@@ -541,6 +706,7 @@ async fn start_whisper_recognition(
     ];
     
     // 启动进程并实时读取输出
+    println!("执行命令: {}", format_cmd_with_args(whisper_cli_name, &args));
     let (mut rx, _child) = whisper_sidecar
         .args(&args)
         .spawn()
@@ -732,6 +898,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             process_media_file, 
             select_directory, 
+            select_media_file,
+            get_file_info,
+            process_media_file_from_path,
             save_settings, 
             load_settings,
             start_whisper_recognition,
@@ -893,4 +1062,3 @@ mod tests {
         assert!(has_coreml, "Should detect CoreML support with -encoder suffix");
     }
 }
-

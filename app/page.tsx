@@ -34,7 +34,13 @@ export default function HomePage() {
       const file = files[0];
       const validTypes = ['video/', 'audio/'];
       if (validTypes.some(type => file.type.startsWith(type))) {
-        setProcessingFile(file);
+        setProcessingFile({
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          path: null,
+          blob: file,
+        });
         updateState({ 
           processResult: null,
           whisperOutput: [],
@@ -44,6 +50,35 @@ export default function HomePage() {
       } else {
         alert('请选择视频或音频文件');
       }
+    }
+  };
+
+  // 使用 Tauri 对话框选择媒体文件（返回本地路径）
+  const pickMediaFileWithDialog = async () => {
+    try {
+      const pickedPath = await invoke('select_media_file');
+      if (!pickedPath) return;
+
+      // 获取文件元信息（名称/大小/类型）
+      const info = await invoke('get_file_info', { path: pickedPath });
+      const { name, size, kind } = info as { name: string; size: number; kind: string };
+
+      setProcessingFile({
+        name,
+        size,
+        type: kind,
+        path: pickedPath as string,
+        blob: null,
+      });
+
+      updateState({ 
+        processResult: null,
+        whisperOutput: [],
+        hasSrtFile: false,
+        recognitionElapsedTime: 0
+      });
+    } catch (e) {
+      console.error('选择文件失败:', e);
     }
   };
 
@@ -91,14 +126,23 @@ export default function HomePage() {
     });
     
     try {
-      // 读取文件内容为字节数组
-      const fileBuffer = await selectedFile.arrayBuffer();
-      const fileData = Array.from(new Uint8Array(fileBuffer));
-      
-      const result = await invoke('process_media_file', {
-        fileData: fileData,
-        fileName: selectedFile.name
-      });
+      let result: any;
+      if (selectedFile.path) {
+        // 通过本地路径处理（无需前端读取字节）
+        result = await invoke('process_media_file_from_path', {
+          inputPath: selectedFile.path,
+        });
+      } else if (selectedFile.blob) {
+        // 回退到浏览器文件对象（拖拽等）
+        const fileBuffer = await selectedFile.blob.arrayBuffer();
+        const fileData = Array.from(new Uint8Array(fileBuffer));
+        result = await invoke('process_media_file', {
+          fileData: fileData,
+          fileName: selectedFile.name
+        });
+      } else {
+        throw new Error('未找到可用的文件来源');
+      }
       
       console.log('FFmpeg 处理结果:', result);
       updateState({ processResult: 'FFmpeg 处理成功！' });
@@ -319,15 +363,9 @@ export default function HomePage() {
               </p>
               <p className="text-gray-500 dark:text-gray-400 mb-5">或者</p>
               <Button asChild>
-                <label className="cursor-pointer">
-                  <input 
-                    type="file" 
-                    accept="video/*,audio/*" 
-                    onChange={handleFileInputChange}
-                    className="hidden"
-                  />
+                <span onClick={pickMediaFileWithDialog} className="cursor-pointer select-none">
                   选择文件
-                </label>
+                </span>
               </Button>
             </>
           ) : (
@@ -339,6 +377,11 @@ export default function HomePage() {
                 <h3 className="m-0 mb-2 text-gray-800 dark:text-gray-100 text-xl break-all">{selectedFile.name}</h3>
                 <p className="my-1 text-gray-600 dark:text-gray-300 text-sm">大小: {formatFileSize(selectedFile.size)}</p>
                 <p className="my-1 text-gray-600 dark:text-gray-300 text-sm">类型: {selectedFile.type}</p>
+                {selectedFile.path ? (
+                  <p className="my-1 text-gray-600 dark:text-gray-300 text-sm break-all font-mono">
+                    路径: {selectedFile.path}
+                  </p>
+                ) : null}
               </div>
               <div className="flex flex-col gap-3 flex-shrink-0">
                 <Button 
