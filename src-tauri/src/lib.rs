@@ -12,6 +12,8 @@ struct AppSettings {
     whisper_model: String,
     #[serde(default)]
     enable_vad: bool,
+    #[serde(default = "default_whisper_optimization")]
+    whisper_optimization: String,
 }
 
 fn default_whisper_language() -> String {
@@ -22,6 +24,11 @@ fn default_whisper_model() -> String {
     "ggml-large-v3.bin".to_string()
 }
 
+fn default_whisper_optimization() -> String {
+    // 可选: "none" | "vulkan" | "coreml" | "cuda"
+    "none".to_string()
+}
+
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
@@ -29,6 +36,7 @@ impl Default for AppSettings {
             whisper_language: "auto".to_string(),
             whisper_model: "ggml-large-v3.bin".to_string(),
             enable_vad: false,
+            whisper_optimization: default_whisper_optimization(),
         }
     }
 }
@@ -783,15 +791,23 @@ async fn start_whisper_recognition(
         .unwrap_or(false);
     
     // 根据 Core ML 支持选择合适的 whisper-cli 版本
-    let whisper_cli_name = if has_coreml_support {
+    let _whisper_cli_name = if has_coreml_support {
         "whisper-cli-coreml" // Core ML 优化版本
     } else {
         "whisper-cli" // 原版 CLI
     };
     
     // 使用选择的 whisper-cli 版本
-    let whisper_sidecar = app_handle.shell().sidecar(whisper_cli_name)
-        .map_err(|e| format!("无法获取 {} sidecar: {}", whisper_cli_name, e))?;
+    // 根据设置选择 whisper-cli 版本
+    // 当选择 "none" 时，强制使用原版 CLI；否则按选项名称选择对应的 sidecar
+    let selected_cli_name = match settings.whisper_optimization.as_str() {
+        "coreml" => "whisper-cli-coreml",
+        "vulkan" => "whisper-cli-vulkan",
+        "cuda" => "whisper-cli-cuda", // 预留，若未打包将启动失败
+        _ => "whisper-cli",
+    };
+    let whisper_sidecar = app_handle.shell().sidecar(selected_cli_name)
+        .map_err(|e| format!("无法获取 {} sidecar: {}", selected_cli_name, e))?;
     
     // 构建命令参数，总是传递 -l 参数
     let mut args = vec![
@@ -817,11 +833,11 @@ async fn start_whisper_recognition(
     }
     
     // 启动进程并实时读取输出
-    println!("执行命令: {}", format_cmd_with_args(whisper_cli_name, &args));
+    println!("执行命令: {}", format_cmd_with_args(selected_cli_name, &args));
     let (mut rx, child) = whisper_sidecar
         .args(&args)
         .spawn()
-        .map_err(|e| format!("启动 {} 失败: {}", whisper_cli_name, e))?;
+        .map_err(|e| format!("启动 {} 失败: {}", selected_cli_name, e))?;
     // 保存子进程句柄
     {
         let mut guard = state.child.lock().await;

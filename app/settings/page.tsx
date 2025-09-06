@@ -14,6 +14,7 @@ export default function SettingsPage() {
     whisper_language: 'auto' as string,
     whisper_model: 'ggml-large-v3.bin' as string,
     enable_vad: false as boolean,
+    whisper_optimization: 'none' as any,
   });
   const [themeMode, setThemeMode] = useState<'system' | 'light' | 'dark'>('system');
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
@@ -324,6 +325,35 @@ export default function SettingsPage() {
                 checked={settings.enable_vad}
                 onCheckedChange={(v) => setSettings(prev => ({ ...prev, enable_vad: v }))}
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">⚙️ 性能优化</CardTitle>
+            <CardDescription>选择是否使用针对平台的优化版 whisper-cli。选择“不优化”将使用原版。</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <label className="text-sm text-gray-600 dark:text-gray-300">优化模式</label>
+              <Select
+                value={settings.whisper_optimization as any}
+                onValueChange={(v: any) => setSettings(prev => ({ ...prev, whisper_optimization: v }))}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="选择优化模式" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">不优化（原版 CPU）</SelectItem>
+                  <SelectItem value="vulkan">Vulkan（Windows）</SelectItem>
+                  <SelectItem value="coreml">Core ML（macOS）</SelectItem>
+                  <SelectItem value="cuda">CUDA（未来）</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                - Windows 推荐 Vulkan；macOS 可选 Core ML。未打包的平台版本会无法启动。
+              </div>
             </div>
           </CardContent>
         </Card>
