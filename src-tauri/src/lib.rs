@@ -1,5 +1,6 @@
 use tauri::{Manager, Emitter};
 use serde::{Deserialize, Serialize};
+use tauri_plugin_shell::process::CommandChild;
 use std::ffi::CString;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -72,6 +73,19 @@ struct SystemInfo {
     ffmpeg_version: String,
     app_version: String,
     tauri_version: String,
+}
+
+// 全局保存正在运行的 whisper 进程句柄，便于停止
+struct WhisperProcState {
+    child: tokio::sync::Mutex<Option<CommandChild>>,
+}
+
+impl Default for WhisperProcState {
+    fn default() -> Self {
+        Self {
+            child: tokio::sync::Mutex::new(None),
+        }
+    }
 }
 
 // 简单格式化命令行为字符串，便于日志打印
@@ -742,6 +756,7 @@ async fn start_whisper_recognition(
     app_handle: tauri::AppHandle,
     audio_file_path: String,
     total_duration: Option<f64>, // 添加总时长参数
+    state: tauri::State<'_, WhisperProcState>,
 ) -> Result<(), String> {
     use tauri_plugin_shell::ShellExt;
     use tauri::path::BaseDirectory;
@@ -803,10 +818,15 @@ async fn start_whisper_recognition(
     
     // 启动进程并实时读取输出
     println!("执行命令: {}", format_cmd_with_args(whisper_cli_name, &args));
-    let (mut rx, _child) = whisper_sidecar
+    let (mut rx, child) = whisper_sidecar
         .args(&args)
         .spawn()
         .map_err(|e| format!("启动 {} 失败: {}", whisper_cli_name, e))?;
+    // 保存子进程句柄
+    {
+        let mut guard = state.child.lock().await;
+        *guard = Some(child);
+    }
     
     let app_handle_clone = app_handle.clone();
     
@@ -945,9 +965,15 @@ async fn check_coreml_support(
 }
 
 #[tauri::command]
-async fn stop_whisper_recognition(_app_handle: tauri::AppHandle) -> Result<(), String> {
-    // 由于我们使用的是同步执行，这里只是为了 API 兼容性
-    // 实际上 whisper 进程在 start_whisper_recognition 中已经等待完成
+async fn stop_whisper_recognition(app_handle: tauri::AppHandle, state: tauri::State<'_, WhisperProcState>) -> Result<(), String> {
+    // 终止正在运行的 whisper 进程
+    if let Some(child) = state.child.lock().await.take() {
+        // 尝试优雅终止，若不支持则直接 kill
+        if let Err(e) = child.kill() {
+            return Err(format!("停止 Whisper 失败: {}", e));
+        }
+        let _ = app_handle.emit("whisper-stopped", "stopped");
+    }
     Ok(())
 }
 
@@ -987,6 +1013,7 @@ async fn save_srt_file(
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(WhisperProcState::default())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())

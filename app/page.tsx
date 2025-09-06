@@ -4,6 +4,15 @@ import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Button } from '@/components/ui/button';
 import { useProcessing } from './contexts/ProcessingContext';
+import { 
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter
+} from '@/components/ui/alert-dialog';
 
 export default function HomePage() {
   const { state, updateState, resetState, setProcessingFile, startTimer, stopTimer, resetTimer } = useProcessing();
@@ -28,6 +37,7 @@ export default function HomePage() {
     whisper_model: 'ggml-large-v3.bin' as string,
   });
   const whisperOutputRef = useRef<HTMLDivElement>(null);
+  const [stopDialogOpen, setStopDialogOpen] = useState(false);
 
   const handleFileSelect = (files: FileList | null) => {
     if (files && files.length > 0) {
@@ -448,13 +458,38 @@ export default function HomePage() {
               <h3 className="m-0 text-gray-800 dark:text-gray-100 text-lg">🎤 语音识别结果</h3>
               <div className="flex gap-2">
                 {isWhisperRunning && (
-                  <Button 
-                    variant="destructive"
-                    size="sm"
-                    onClick={stopWhisperRecognition}
-                  >
-                    ⏹ 停止
-                  </Button>
+                  <AlertDialog open={stopDialogOpen} onOpenChange={setStopDialogOpen}>
+                    <AlertDialogTrigger asChild>
+                      <Button 
+                        variant="destructive"
+                        size="sm"
+                      >
+                        ⏹ 停止
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>确认停止当前识别？</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          停止后本次识别将被终止且无法继续。
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <Button 
+                          variant="outline"
+                          onClick={() => setStopDialogOpen(false)}
+                        >
+                          取消
+                        </Button>
+                        <Button 
+                          variant="destructive"
+                          onClick={async () => { await stopWhisperRecognition(); setStopDialogOpen(false); }}
+                        >
+                          确定停止
+                        </Button>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 )}
                 {hasSrtFile && (
                   <Button 
