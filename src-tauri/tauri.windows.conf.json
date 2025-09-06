@@ -1,7 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "build": {
-    "beforeBuildCommand": "powershell -NoProfile -Command \"$env:NEXT_DISABLE_SWC_NATIVE='1'; pnpm build\""
+    "beforeBuildCommand": "powershell -NoProfile -Command \"$env:NEXT_DISABLE_SWC_NATIVE='1'; pnpm build\"",
+    "frontendDist": "../dist"
   },
   "bundle": {
     "externalBin": [
