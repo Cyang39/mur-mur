@@ -15,6 +15,7 @@ export default function SettingsPage() {
     whisper_model: 'ggml-large-v3.bin' as string,
     enable_vad: false as boolean,
   });
+  const [themeMode, setThemeMode] = useState<'system' | 'light' | 'dark'>('system');
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const [appDataInfo, setAppDataInfo] = useState<{
     path: string;
@@ -80,6 +81,18 @@ export default function SettingsPage() {
   useEffect(() => {
     loadSettings();
     loadAppDataInfo();
+    // 初始化主题状态
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('theme');
+        const mode = stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system';
+        setThemeMode(mode as 'system' | 'light' | 'dark');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const dark = mode === 'dark' || (mode === 'system' && prefersDark);
+        const root = document.documentElement;
+        root.classList[dark ? 'add' : 'remove']('dark');
+      } catch {}
+    }
   }, []);
 
   // 设置变更时自动保存（带轻微防抖）
@@ -126,6 +139,42 @@ export default function SettingsPage() {
       </div>
       
       <div className="space-y-8">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">🌓 外观</CardTitle>
+            <CardDescription>切换浅色/深色模式</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="font-medium text-gray-800 dark:text-gray-100">主题模式</div>
+              <Select 
+                value={themeMode}
+                onValueChange={(value) => {
+                  const mode = value as 'system' | 'light' | 'dark';
+                  setThemeMode(mode);
+                  try {
+                    localStorage.setItem('theme', mode);
+                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    const dark = mode === 'dark' || (mode === 'system' && prefersDark);
+                    const root = document.documentElement;
+                    root.classList[dark ? 'add' : 'remove']('dark');
+                  } catch {}
+                }}
+              >
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="选择主题" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="system">跟随系统</SelectItem>
+                  <SelectItem value="light">浅色</SelectItem>
+                  <SelectItem value="dark">深色</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500 dark:text-gray-400">选择“跟随系统”将根据系统外观自动切换。</p>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
