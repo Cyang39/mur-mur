@@ -6,12 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
     whisper_models_path: null as string | null,
     whisper_language: 'auto' as string,
     whisper_model: 'ggml-large-v3.bin' as string,
+    enable_vad: false as boolean,
   });
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const [appDataInfo, setAppDataInfo] = useState<{
@@ -250,6 +252,29 @@ export default function SettingsPage() {
                   无法加载目录信息
                 </div>
               )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              🗣️ 语音活动检测 (VAD)
+            </CardTitle>
+            <CardDescription>
+              开启后将使用打包的 Silero VAD 模型改进断句
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-medium text-gray-800 dark:text-gray-100">启用 VAD</div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">执行 whisper-cli 时追加 --vad 与 --vad-model 参数</div>
+              </div>
+              <Switch
+                checked={settings.enable_vad}
+                onCheckedChange={(v) => setSettings(prev => ({ ...prev, enable_vad: v }))}
+              />
             </div>
           </CardContent>
         </Card>

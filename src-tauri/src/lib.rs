@@ -8,6 +8,8 @@ struct AppSettings {
     whisper_language: String,
     #[serde(default = "default_whisper_model")]
     whisper_model: String,
+    #[serde(default)]
+    enable_vad: bool,
 }
 
 fn default_whisper_language() -> String {
@@ -24,6 +26,7 @@ impl Default for AppSettings {
             whisper_models_path: None,
             whisper_language: "auto".to_string(),
             whisper_model: "ggml-large-v3.bin".to_string(),
+            enable_vad: false,
         }
     }
 }
@@ -661,6 +664,7 @@ async fn start_whisper_recognition(
     total_duration: Option<f64>, // 添加总时长参数
 ) -> Result<(), String> {
     use tauri_plugin_shell::ShellExt;
+    use tauri::path::BaseDirectory;
     
     // 加载设置
     let settings = load_settings(app_handle.clone()).await
@@ -695,7 +699,7 @@ async fn start_whisper_recognition(
         .map_err(|e| format!("无法获取 {} sidecar: {}", whisper_cli_name, e))?;
     
     // 构建命令参数，总是传递 -l 参数
-    let args = vec![
+    let mut args = vec![
         "-m".to_string(),
         model_file.to_string_lossy().to_string(),
         "-f".to_string(),
@@ -704,6 +708,18 @@ async fn start_whisper_recognition(
         "-l".to_string(),
         settings.whisper_language.clone(), // 总是传递语言参数，包括 "auto"
     ];
+
+    // 如果启用 VAD，附加 vad 参数
+    if settings.enable_vad {
+        // 解析打包到资源目录下的 VAD 模型
+        let vad_path = app_handle
+            .path()
+            .resolve("resources/ggml-silero-v5.1.2.bin", BaseDirectory::Resource)
+            .map_err(|e| format!("解析 VAD 资源路径失败: {}", e))?;
+        args.push("--vad".to_string());
+        args.push("--vad-model".to_string());
+        args.push(vad_path.to_string_lossy().to_string());
+    }
     
     // 启动进程并实时读取输出
     println!("执行命令: {}", format_cmd_with_args(whisper_cli_name, &args));

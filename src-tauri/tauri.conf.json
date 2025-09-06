@@ -35,6 +35,9 @@
       "bin/whisper-cli",
       "bin/whisper-cli-coreml",
       "bin/ffmpeg"
+    ],
+    "resources": [
+      "resources/ggml-silero-v5.1.2.bin"
     ]
   }
 }
