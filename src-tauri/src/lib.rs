@@ -1,5 +1,6 @@
 use tauri::{Manager, Emitter};
 use serde::{Deserialize, Serialize};
+use std::ffi::CString;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct AppSettings {
@@ -342,6 +343,85 @@ async fn get_system_info_command(app_handle: tauri::AppHandle) -> Result<SystemI
         ffmpeg_version,
         app_version,
         tauri_version,
+    })
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct VulkanInfo {
+    supported: bool,
+    api_version: Option<String>,
+    device_count: u32,
+    error: Option<String>,
+}
+
+#[tauri::command]
+async fn get_vulkan_support() -> Result<VulkanInfo, String> {
+    // 动态加载 Vulkan 运行库
+    let entry = unsafe { ash::Entry::load() };
+    let entry = match entry {
+        Ok(e) => e,
+        Err(e) => {
+            return Ok(VulkanInfo {
+                supported: false,
+                api_version: None,
+                device_count: 0,
+                error: Some(format!("加载 Vulkan 失败: {}", e)),
+            })
+        }
+    };
+
+    // 获取支持的实例 API 版本（Vulkan 1.1+ 可用）
+    let api_version_u32 = match entry.try_enumerate_instance_version() {
+        Ok(Some(v)) => v,
+        Ok(None) => ash::vk::API_VERSION_1_0, // 旧版 loader 视为 1.0
+        Err(_) => ash::vk::API_VERSION_1_0,
+    };
+    let api_version = Some(format!(
+        "{}.{}.{}",
+        ash::vk::api_version_major(api_version_u32),
+        ash::vk::api_version_minor(api_version_u32),
+        ash::vk::api_version_patch(api_version_u32)
+    ));
+
+    // 创建最小实例
+    let app_name = CString::new("murmur").unwrap_or_default();
+    let app_info = ash::vk::ApplicationInfo::builder()
+        .application_name(&app_name)
+        .application_version(0)
+        .engine_name(&app_name)
+        .engine_version(0)
+        .api_version(api_version_u32);
+
+    let create_info = ash::vk::InstanceCreateInfo::builder().application_info(&app_info);
+
+    let instance = unsafe { entry.create_instance(&create_info, None) };
+    let instance = match instance {
+        Ok(i) => i,
+        Err(e) => {
+            return Ok(VulkanInfo {
+                supported: false,
+                api_version,
+                device_count: 0,
+                error: Some(format!("创建 Vulkan 实例失败: {}", e)),
+            })
+        }
+    };
+
+    // 枚举物理设备
+    let devices = unsafe { instance.enumerate_physical_devices() };
+    let (device_count, supported, error) = match devices {
+        Ok(list) => (list.len() as u32, !list.is_empty(), None),
+        Err(e) => (0, false, Some(format!("枚举物理设备失败: {}", e))),
+    };
+
+    // 清理实例
+    unsafe { instance.destroy_instance(None) };
+
+    Ok(VulkanInfo {
+        supported,
+        api_version,
+        device_count,
+        error,
     })
 }
 
@@ -927,7 +1007,8 @@ pub fn run() {
             get_video_duration_command,
             get_app_data_info,
             open_app_data_directory,
-            get_system_info_command
+            get_system_info_command,
+            get_vulkan_support
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

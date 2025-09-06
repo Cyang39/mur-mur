@@ -18,6 +18,12 @@ export default function AboutPage() {
     tauri_version: string;
   } | null>(null);
   const [isLoadingSystemInfo, setIsLoadingSystemInfo] = useState(false);
+  const [vulkanInfo, setVulkanInfo] = useState<{
+    supported: boolean;
+    api_version?: string | null;
+    device_count: number;
+    error?: string | null;
+  } | null>(null);
 
   // 获取系统信息
   const loadSystemInfo = async () => {
@@ -35,6 +41,12 @@ export default function AboutPage() {
   // 组件加载时自动获取系统信息
   useEffect(() => {
     loadSystemInfo();
+    invoke('get_vulkan_support')
+      .then((res) => setVulkanInfo(res as any))
+      .catch((e) => {
+        console.error('获取 Vulkan 支持信息失败:', e);
+        setVulkanInfo({ supported: false, device_count: 0, api_version: null, error: String(e) });
+      });
   }, []);
   return (
     <div className="container mx-auto p-8 max-w-4xl">
@@ -211,6 +223,27 @@ export default function AboutPage() {
                       <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
                         <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">🎮 GPU</div>
                         <div className="text-sm font-medium">{systemInfo.gpu_info}</div>
+                      </div>
+
+                      <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">🧩 Vulkan</div>
+                        {vulkanInfo ? (
+                          <div className="text-sm font-medium">
+                            {vulkanInfo.supported ? '支持' : '不支持'}
+                            {vulkanInfo.api_version ? (
+                              <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                                v{vulkanInfo.api_version}
+                              </span>
+                            ) : null}
+                            <div className="text-xs text-gray-500 dark:text-gray-400">设备数: {vulkanInfo.device_count}</div>
+                            {!vulkanInfo.supported ? (
+                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">未检测到 Vulkan 运行库</div>
+                            ) : null}
+                            {/* 错误细节不展示，避免显示冗长系统路径 */}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-500 dark:text-gray-400">检测中...</div>
+                        )}
                       </div>
                     </div>
                     
