@@ -502,8 +502,19 @@ async fn process_media_file(
     // 清理旧的 .wav 文件
     cleanup_wav_files(&temp_dir);
     
-    // 保存输入文件到临时目录
-    let input_path = temp_dir.join(&file_name);
+    // 为本次处理创建独立时间戳目录
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis();
+    let run_dir = temp_dir.join(format!("{}", ts));
+    if !run_dir.exists() {
+        std::fs::create_dir_all(&run_dir)
+            .map_err(|e| format!("Failed to create run directory: {}", e))?;
+    }
+
+    // 保存输入文件到本次处理目录
+    let input_path = run_dir.join(&file_name);
     std::fs::write(&input_path, &file_data)
         .map_err(|e| format!("Failed to save input file: {}", e))?;
     
@@ -513,7 +524,7 @@ async fn process_media_file(
         .and_then(|s| s.to_str())
         .unwrap_or("audio");
     let output_filename = format!("{}.wav", file_stem);
-    let output_path = temp_dir.join(&output_filename);
+    let output_path = run_dir.join(&output_filename);
     
     // 获取视频时长
     let duration = get_video_duration(&app_handle, &input_path.to_string_lossy()).await;
@@ -695,13 +706,24 @@ async fn process_media_file_from_path(
     // 清理旧的 .wav 文件
     cleanup_wav_files(&temp_dir);
 
-    // 基于输入文件名生成输出 wav 名称
+    // 为本次处理创建独立时间戳目录
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis();
+    let run_dir = temp_dir.join(format!("{}", ts));
+    if !run_dir.exists() {
+        std::fs::create_dir_all(&run_dir)
+            .map_err(|e| format!("Failed to create run directory: {}", e))?;
+    }
+
+    // 基于输入文件名生成输出 wav 名称（放在本次处理目录下）
     let file_stem = std::path::Path::new(&input_path)
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("audio");
     let output_filename = format!("{}.wav", file_stem);
-    let output_path = temp_dir.join(&output_filename);
+    let output_path = run_dir.join(&output_filename);
 
     // 获取时长
     let duration = get_video_duration(&app_handle, &input_path).await;
