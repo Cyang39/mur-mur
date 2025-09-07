@@ -14,6 +14,8 @@ struct AppSettings {
     enable_vad: bool,
     #[serde(default = "default_whisper_optimization")]
     whisper_optimization: String,
+    #[serde(default)]
+    disable_gpu: bool,
 }
 
 fn default_whisper_language() -> String {
@@ -37,6 +39,7 @@ impl Default for AppSettings {
             whisper_model: "ggml-large-v3.bin".to_string(),
             enable_vad: false,
             whisper_optimization: default_whisper_optimization(),
+            disable_gpu: false,
         }
     }
 }
@@ -830,6 +833,11 @@ async fn start_whisper_recognition(
         args.push("--vad".to_string());
         args.push("--vad-model".to_string());
         args.push(vad_path.to_string_lossy().to_string());
+    }
+
+    // 如果设置了禁用 GPU，追加 --no-gpu
+    if settings.disable_gpu {
+        args.push("--no-gpu".to_string());
     }
     
     // 启动进程并实时读取输出

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { useProcessing } from './contexts/ProcessingContext';
 import { 
   AlertDialog,
@@ -35,6 +36,7 @@ export default function HomePage() {
     whisper_models_path: null as string | null,
     whisper_language: 'auto' as string,
     whisper_model: 'ggml-large-v3.bin' as string,
+    disable_gpu: false as boolean,
   });
   const whisperOutputRef = useRef<HTMLDivElement>(null);
   const [stopDialogOpen, setStopDialogOpen] = useState(false);
@@ -305,6 +307,16 @@ export default function HomePage() {
     }
   };
 
+  const toggleNoGpu = async (v: boolean) => {
+    const next = { ...settings, disable_gpu: v } as any;
+    setSettings(next);
+    try {
+      await invoke('save_settings', { settings: next });
+    } catch (e) {
+      console.error('保存设置失败:', e);
+    }
+  };
+
 
 
   // 组件加载时自动加载设置
@@ -351,6 +363,10 @@ export default function HomePage() {
   const renderMainContent = () => {
     return (
       <div className="text-center max-w-4xl mx-auto">
+        <div className="flex items-center justify-end gap-3 mt-6">
+          <span className="text-sm text-gray-600 dark:text-gray-300">不使用 GPU</span>
+          <Switch checked={!!settings.disable_gpu} onCheckedChange={toggleNoGpu} />
+        </div>
         <div 
           className={`border-2 border-dashed rounded-xl p-16 my-10 transition-all duration-300 ease-in-out cursor-pointer min-h-[200px] flex flex-col items-center justify-center ${
             isDragging ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 scale-105' : 
