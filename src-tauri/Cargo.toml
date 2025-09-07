@@ -28,6 +28,7 @@ serde_json = "1"
 tokio = { version = "1", features = ["full"] }
 tempfile = "3.8"
 sysinfo = "0.32"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 ash = "0.37"
 
 [dev-dependencies]

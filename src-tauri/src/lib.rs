@@ -2,6 +2,9 @@ use tauri::{Manager, Emitter};
 use serde::{Deserialize, Serialize};
 use tauri_plugin_shell::process::CommandChild;
 use std::ffi::CString;
+use std::fs::OpenOptions;
+use std::io::Write;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct AppSettings {
@@ -96,7 +99,10 @@ fn cleanup_wav_files(dir_path: &std::path::Path) {
     if let Ok(entries) = std::fs::read_dir(dir_path) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.is_file() {
+            if path.is_dir() {
+                // 递归清理子目录（等价于 temp/*/*.wav 等情况）
+                cleanup_wav_files(&path);
+            } else if path.is_file() {
                 if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
                     if ext.eq_ignore_ascii_case("wav") {
                         let _ = std::fs::remove_file(&path);
@@ -105,6 +111,24 @@ fn cleanup_wav_files(dir_path: &std::path::Path) {
             }
         }
     }
+}
+
+// 日志工具：时间戳（毫秒）+ 追加写入
+fn now_string() -> String {
+    let now = chrono::Local::now();
+    now.format("%Y-%m-%d %H:%M:%S").to_string()
+}
+
+fn append_log_line<P: AsRef<Path>>(log_path: P, tag: &str, line: &str) {
+    let prefix = format!("[{}][{}] ", now_string(), tag);
+    let mut buf = prefix;
+    buf.push_str(line);
+    buf.push('\n');
+    let _ = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log_path)
+        .and_then(|mut f| f.write_all(buf.as_bytes()));
 }
 
 // 全局保存正在运行的 whisper 进程句柄，便于停止
@@ -525,6 +549,7 @@ async fn process_media_file(
         .unwrap_or("audio");
     let output_filename = format!("{}.wav", file_stem);
     let output_path = run_dir.join(&output_filename);
+    let log_path = run_dir.join(format!("{}_log.txt", file_stem));
     
     // 获取视频时长
     let duration = get_video_duration(&app_handle, &input_path.to_string_lossy()).await;
@@ -546,7 +571,9 @@ async fn process_media_file(
         .map_err(|e| format!("无法获取 ffmpeg sidecar: {}", e))?;
     
     // 执行 ffmpeg 命令
-    println!("执行命令: {}", format_cmd_with_args("ffmpeg", &args));
+    let cmd_str = format_cmd_with_args("ffmpeg", &args);
+    println!("执行命令: {}", cmd_str);
+    append_log_line(&log_path, "CMD", &cmd_str);
     let ffmpeg_result = ffmpeg_sidecar.args(&args).output().await;
     
     // 删除临时输入文件
@@ -554,6 +581,12 @@ async fn process_media_file(
     
     match ffmpeg_result {
         Ok(output) => {
+            // 记录输出
+            let out_str = String::from_utf8_lossy(&output.stdout);
+            for l in out_str.lines() { append_log_line(&log_path, "ffmpeg:stdout", l); }
+            let err_str = String::from_utf8_lossy(&output.stderr);
+            for l in err_str.lines() { append_log_line(&log_path, "ffmpeg:stderr", l); }
+
             if output.status.success() {
                 Ok(ProcessResult {
                     success: true,
@@ -724,6 +757,7 @@ async fn process_media_file_from_path(
         .unwrap_or("audio");
     let output_filename = format!("{}.wav", file_stem);
     let output_path = run_dir.join(&output_filename);
+    let log_path = run_dir.join(format!("{}_log.txt", file_stem));
 
     // 获取时长
     let duration = get_video_duration(&app_handle, &input_path).await;
@@ -745,11 +779,19 @@ async fn process_media_file_from_path(
         "-y".to_string(),
     ];
 
-    println!("执行命令: {}", format_cmd_with_args("ffmpeg", &args));
+    let cmd_str = format_cmd_with_args("ffmpeg", &args);
+    println!("执行命令: {}", cmd_str);
+    append_log_line(&log_path, "CMD", &cmd_str);
     let ffmpeg_result = ffmpeg_sidecar.args(&args).output().await;
 
     match ffmpeg_result {
         Ok(output) => {
+            // 记录输出
+            let out_str = String::from_utf8_lossy(&output.stdout);
+            for l in out_str.lines() { append_log_line(&log_path, "ffmpeg:stdout", l); }
+            let err_str = String::from_utf8_lossy(&output.stderr);
+            for l in err_str.lines() { append_log_line(&log_path, "ffmpeg:stderr", l); }
+
             if output.status.success() {
                 Ok(ProcessResult {
                     success: true,
@@ -892,8 +934,15 @@ async fn start_whisper_recognition(
     args.push("--threads".to_string());
     args.push(tc.to_string());
     
+    // 准备日志路径（和 wav 同目录，<stem>_log.txt）
+    let audio_p = PathBuf::from(&audio_file_path);
+    let stem = audio_p.file_stem().and_then(|s| s.to_str()).unwrap_or("audio");
+    let log_path = audio_p.parent().unwrap_or_else(|| Path::new(".")).join(format!("{}_log.txt", stem));
+    let cmd_str = format_cmd_with_args(selected_cli_name, &args);
+    println!("执行命令: {}", cmd_str);
+    append_log_line(&log_path, "CMD", &cmd_str);
+
     // 启动进程并实时读取输出
-    println!("执行命令: {}", format_cmd_with_args(selected_cli_name, &args));
     let (mut rx, child) = whisper_sidecar
         .args(&args)
         .spawn()
@@ -905,6 +954,7 @@ async fn start_whisper_recognition(
     }
     
     let app_handle_clone = app_handle.clone();
+    let log_path_clone = log_path.clone();
     
     // 在新的任务中处理输出
     tokio::spawn(async move {
@@ -916,6 +966,7 @@ async fn start_whisper_recognition(
                     if let Ok(line) = String::from_utf8(data) {
                         let trimmed_line = line.trim();
                         if !trimmed_line.is_empty() {
+                            append_log_line(&log_path_clone, "whisper:stdout", trimmed_line);
                             // 检查是否包含进度信息
                             if let Some(current_time) = extract_progress_from_whisper_output(trimmed_line) {
                                 // 发送进度信息
@@ -943,11 +994,13 @@ async fn start_whisper_recognition(
                     if let Ok(line) = String::from_utf8(data) {
                         let trimmed_line = line.trim();
                         if !trimmed_line.is_empty() {
+                            append_log_line(&log_path_clone, "whisper:stderr", trimmed_line);
                             let _ = app_handle_clone.emit("whisper-error", trimmed_line);
                         }
                     }
                 }
                 CommandEvent::Terminated(payload) => {
+                    append_log_line(&log_path_clone, "whisper", &format!("terminated: {:?}", payload.code));
                     if let Some(code) = payload.code {
                         if code == 0 {
                             let _ = app_handle_clone.emit("whisper-complete", "Whisper 识别完成");
@@ -958,6 +1011,7 @@ async fn start_whisper_recognition(
                     break;
                 }
                 CommandEvent::Error(error) => {
+                    append_log_line(&log_path_clone, "whisper", &format!("error: {}", error));
                     let _ = app_handle_clone.emit("whisper-error", format!("Whisper 进程错误: {}", error));
                     break;
                 }
