@@ -208,7 +208,7 @@ fn parse_timestamp(timestamp: &str) -> Option<f64> {
     Some(hours * 3600.0 + minutes * 60.0 + seconds)
 }
 
-// 从 whisper 输出中提取进度信息
+// 从 whisper 输出中提取进度信息（基于段时间戳）
 fn extract_progress_from_whisper_output(line: &str) -> Option<f64> {
     // 匹配格式: " [00:01:35.320 --> 00:01:36.860] 内容"
     if let Some(start) = line.find('[') {
@@ -221,43 +221,31 @@ fn extract_progress_from_whisper_output(line: &str) -> Option<f64> {
     None
 }
 
-// 获取视频时长
-async fn get_video_duration(app_handle: &tauri::AppHandle, video_path: &str) -> Option<f64> {
-    use tauri_plugin_shell::ShellExt;
-    use tokio::time::{timeout, Duration};
-    
-    let ffmpeg_sidecar = app_handle.shell().sidecar("ffmpeg").ok()?;
-    // 仅探测媒体信息，不进行解码/写出，避免大文件耗时
-    let args = vec![
-        "-hide_banner".to_string(),
-        "-i".to_string(),
-        video_path.to_string(),
-    ];
-    println!("执行探测命令: {}", format_cmd_with_args("ffmpeg", &args));
-    let fut = ffmpeg_sidecar.args(&args).output();
-    let result = match timeout(Duration::from_secs(8), fut).await {
-        Ok(Ok(output)) => output,
-        _ => return None,
-    };
-    
-    let stderr = String::from_utf8_lossy(&result.stderr);
-    
-    // 解析 FFmpeg 输出中的时长信息
-    // 查找 "Duration: 00:02:30.50" 这样的行
-    for line in stderr.lines() {
-        if line.contains("Duration:") {
-            if let Some(duration_start) = line.find("Duration: ") {
-                let duration_part = &line[duration_start + 10..];
-                if let Some(comma_pos) = duration_part.find(',') {
-                    let duration_str = &duration_part[..comma_pos].trim();
-                    return parse_timestamp(duration_str);
-                }
-            }
-        }
+// 从 --print-progress 的 stderr 行解析百分比（例如：
+// "whisper_print_progress_callback: progress =  75%"）
+fn extract_percentage_from_progress_line(line: &str) -> Option<f64> {
+    // 仅解析包含 whisper_print_progress_callback 的行，避免误匹配其它含 % 的输出
+    if !line.contains("whisper_print_progress_callback") {
+        return None;
     }
-    
-    None
+    // 快速筛查：必须包含 '%' 字符
+    let percent_pos = line.rfind('%')?;
+    // 回退跳过空白
+    let bytes = line.as_bytes();
+    let mut end = percent_pos; // 不含 '%'
+    while end > 0 && bytes[end - 1].is_ascii_whitespace() { end -= 1; }
+    // 向前扫描数字和小数点
+    let mut start = end;
+    while start > 0 {
+        let c = bytes[start - 1] as char;
+        if c.is_ascii_digit() || c == '.' { start -= 1; } else { break; }
+    }
+    if start >= end { return None; }
+    let num_str = &line[start..end];
+    num_str.trim().parse::<f64>().ok()
 }
+
+// 已移除：原先通过 ffmpeg 探测媒体时长的逻辑，改为仅依赖 Whisper 的进度百分比。
 
 #[tauri::command]
 async fn get_app_data_info(app_handle: tauri::AppHandle) -> Result<AppDataInfo, String> {
@@ -495,15 +483,7 @@ async fn get_vulkan_support() -> Result<VulkanInfo, String> {
     })
 }
 
-#[tauri::command]
-async fn get_video_duration_command(
-    app_handle: tauri::AppHandle,
-    video_path: String,
-) -> Result<f64, String> {
-    get_video_duration(&app_handle, &video_path)
-        .await
-        .ok_or_else(|| "无法获取视频时长".to_string())
-}
+// 已移除：get_video_duration_command（不再需要时长探测）
 
 #[tauri::command]
 async fn process_media_file(
@@ -552,7 +532,7 @@ async fn process_media_file(
     let log_path = run_dir.join(format!("{}_log.txt", file_stem));
     
     // 获取视频时长
-    let duration = get_video_duration(&app_handle, &input_path.to_string_lossy()).await;
+    let duration: Option<f64> = None; // 不再探测媒体时长
     
     // 构建 ffmpeg 命令
     let args = vec![
@@ -760,7 +740,7 @@ async fn process_media_file_from_path(
     let log_path = run_dir.join(format!("{}_log.txt", file_stem));
 
     // 获取时长
-    let duration = get_video_duration(&app_handle, &input_path).await;
+    let duration: Option<f64> = None; // 不再探测媒体时长
 
     // 执行 ffmpeg 转码
     let ffmpeg_sidecar = app_handle
@@ -903,13 +883,14 @@ async fn start_whisper_recognition(
     
     // 构建命令参数，总是传递 -l 参数
     let mut args = vec![
-        "-m".to_string(),
+        "--model".to_string(),
         model_file.to_string_lossy().to_string(),
-        "-f".to_string(),
+        "--file".to_string(),
         audio_file_path.clone(),
-        "-osrt".to_string(), // 添加 SRT 字幕文件输出参数
-        "-l".to_string(),
+        "--output-srt".to_string(), // 添加 SRT 字幕文件输出参数
+        "--language".to_string(),
         settings.whisper_language.clone(), // 总是传递语言参数，包括 "auto"
+        "--print-progress".to_string() // 推理进度
     ];
 
     // 如果启用 VAD，附加 vad 参数
@@ -995,7 +976,15 @@ async fn start_whisper_recognition(
                         let trimmed_line = line.trim();
                         if !trimmed_line.is_empty() {
                             append_log_line(&log_path_clone, "whisper:stderr", trimmed_line);
-                            let _ = app_handle_clone.emit("whisper-error", trimmed_line);
+                            // 尝试解析 --print-progress 的进度行
+                            if let Some(pct) = extract_percentage_from_progress_line(trimmed_line) {
+                                let (cur, total) = if let Some(total) = total_duration { (pct * total / 100.0, total) } else { (0.0, 0.0) };
+                                let progress_info = ProgressInfo { current_seconds: cur, total_seconds: total, percentage: pct.min(100.0) };
+                                let _ = app_handle_clone.emit("whisper-progress", progress_info);
+                            } else {
+                                // 其他 stderr 输出作为错误事件
+                                let _ = app_handle_clone.emit("whisper-error", trimmed_line);
+                            }
                         }
                     }
                 }
@@ -1161,7 +1150,6 @@ pub fn run() {
             check_model_exists,
             check_coreml_support,
             save_srt_file,
-            get_video_duration_command,
             get_app_data_info,
             open_app_data_directory,
             get_system_info_command,

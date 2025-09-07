@@ -466,12 +466,20 @@ export default function HomePage() {
               </div>
               
               {/* 进度条 */}
-              {isWhisperRunning && totalDuration && totalDuration > 0 && (
+              {isWhisperRunning && (
                 <div className="w-full max-w-md">
                   <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
-                    <span>{formatTime(currentProgress)}</span>
+                    {totalDuration && totalDuration > 0 ? (
+                      <span>{formatTime(currentProgress)}</span>
+                    ) : (
+                      <span></span>
+                    )}
                     <span>{progressPercentage.toFixed(1)}%</span>
-                    <span>{formatTime(totalDuration)}</span>
+                    {totalDuration && totalDuration > 0 ? (
+                      <span>{formatTime(totalDuration)}</span>
+                    ) : (
+                      <span></span>
+                    )}
                   </div>
                   <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
                     <div 
