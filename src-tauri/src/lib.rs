@@ -91,6 +91,22 @@ struct SystemInfo {
     tauri_version: String,
 }
 
+// 清理指定目录下的 .wav 临时文件
+fn cleanup_wav_files(dir_path: &std::path::Path) {
+    if let Ok(entries) = std::fs::read_dir(dir_path) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_file() {
+                if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
+                    if ext.eq_ignore_ascii_case("wav") {
+                        let _ = std::fs::remove_file(&path);
+                    }
+                }
+            }
+        }
+    }
+}
+
 // 全局保存正在运行的 whisper 进程句柄，便于停止
 struct WhisperProcState {
     child: tokio::sync::Mutex<Option<CommandChild>>,
@@ -483,6 +499,8 @@ async fn process_media_file(
         std::fs::create_dir_all(&temp_dir)
             .map_err(|e| format!("Failed to create temp directory: {}", e))?;
     }
+    // 清理旧的 .wav 文件
+    cleanup_wav_files(&temp_dir);
     
     // 保存输入文件到临时目录
     let input_path = temp_dir.join(&file_name);
@@ -674,6 +692,8 @@ async fn process_media_file_from_path(
         std::fs::create_dir_all(&temp_dir)
             .map_err(|e| format!("Failed to create temp directory: {}", e))?;
     }
+    // 清理旧的 .wav 文件
+    cleanup_wav_files(&temp_dir);
 
     // 基于输入文件名生成输出 wav 名称
     let file_stem = std::path::Path::new(&input_path)
