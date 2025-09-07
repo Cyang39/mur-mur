@@ -345,10 +345,10 @@ export default function SettingsPage() {
                   <SelectValue placeholder="选择优化模式" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">不优化（原版 CPU）</SelectItem>
-                  <SelectItem value="vulkan">Vulkan（Windows）</SelectItem>
+                  <SelectItem value="none">无优化（Metal/CPU）</SelectItem>
+                  <SelectItem value="vulkan">Vulkan（Windows/macOS）</SelectItem>
                   <SelectItem value="coreml">Core ML（macOS）</SelectItem>
-                  <SelectItem value="cuda">CUDA（未来）</SelectItem>
+                  {/* <SelectItem value="cuda">CUDA（未实现）</SelectItem> */}
                 </SelectContent>
               </Select>
               <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -358,35 +358,6 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              📝 说明
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2 text-gray-700 dark:text-gray-300">
-              <li className="flex items-start gap-2">
-                <span className="text-blue-500 mt-1">•</span>
-                <div>
-                  <strong className="text-gray-800 dark:text-gray-100">Whisper CLI:</strong> 用于语音识别的命令行工具
-                </div>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-blue-500 mt-1">•</span>
-                <div>
-                  <strong className="text-gray-800 dark:text-gray-100">Models:</strong> 存放 Whisper 预训练模型的目录
-                </div>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-blue-500 mt-1">•</span>
-                <div>
-                  设置保存后将在下次启动时自动加载
-                </div>
-              </li>
-            </ul>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
