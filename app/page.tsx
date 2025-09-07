@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
 import { useProcessing } from './contexts/ProcessingContext';
 import { 
   AlertDialog,
@@ -37,6 +38,7 @@ export default function HomePage() {
     whisper_language: 'auto' as string,
     whisper_model: 'ggml-large-v3.bin' as string,
     disable_gpu: false as boolean,
+    thread_count: 4 as number,
   });
   const whisperOutputRef = useRef<HTMLDivElement>(null);
   const [stopDialogOpen, setStopDialogOpen] = useState(false);
@@ -317,6 +319,17 @@ export default function HomePage() {
     }
   };
 
+  const changeThreads = async (vals: number[]) => {
+    const n = Math.max(1, Math.min(8, Math.round(vals[0] ?? 4)));
+    const next = { ...settings, thread_count: n } as any;
+    setSettings(next);
+    try {
+      await invoke('save_settings', { settings: next });
+    } catch (e) {
+      console.error('保存设置失败:', e);
+    }
+  };
+
 
 
   // 组件加载时自动加载设置
@@ -363,9 +376,13 @@ export default function HomePage() {
   const renderMainContent = () => {
     return (
       <div className="text-center max-w-4xl mx-auto">
-        <div className="flex items-center justify-end gap-3 mt-6">
+        <div className="flex items-center justify-end gap-6 mt-6">
           <span className="text-sm text-gray-600 dark:text-gray-300">不使用 GPU</span>
           <Switch checked={!!settings.disable_gpu} onCheckedChange={toggleNoGpu} />
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-600 dark:text-gray-300">线程: {settings.thread_count}</span>
+            <Slider min={1} max={8} step={1} value={[settings.thread_count]} onValueChange={changeThreads} />
+          </div>
         </div>
         <div 
           className={`border-2 border-dashed rounded-xl p-16 my-10 transition-all duration-300 ease-in-out cursor-pointer min-h-[200px] flex flex-col items-center justify-center ${

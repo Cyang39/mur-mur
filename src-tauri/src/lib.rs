@@ -16,6 +16,8 @@ struct AppSettings {
     whisper_optimization: String,
     #[serde(default)]
     disable_gpu: bool,
+    #[serde(default = "default_thread_count")]
+    thread_count: u32,
 }
 
 fn default_whisper_language() -> String {
@@ -31,6 +33,8 @@ fn default_whisper_optimization() -> String {
     "none".to_string()
 }
 
+fn default_thread_count() -> u32 { 4 }
+
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
@@ -40,6 +44,7 @@ impl Default for AppSettings {
             enable_vad: false,
             whisper_optimization: default_whisper_optimization(),
             disable_gpu: false,
+            thread_count: default_thread_count(),
         }
     }
 }
@@ -839,6 +844,11 @@ async fn start_whisper_recognition(
     if settings.disable_gpu {
         args.push("--no-gpu".to_string());
     }
+
+    // 线程数量（1-8），默认 4
+    let tc = settings.thread_count.clamp(1, 8);
+    args.push("--threads".to_string());
+    args.push(tc.to_string());
     
     // 启动进程并实时读取输出
     println!("执行命令: {}", format_cmd_with_args(selected_cli_name, &args));
