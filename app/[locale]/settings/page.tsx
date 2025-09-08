@@ -9,11 +9,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Switch } from '@/components/ui/switch';
 import {useLocale, useTranslations} from 'next-intl'
 import {usePathname, useRouter} from 'next/navigation'
-import { Languages } from 'lucide-react'
+import { Languages, Settings as SettingsIcon, SunMoon, Bot, Globe, Folder, FolderOpen, RefreshCw, AudioLines, Gauge } from 'lucide-react'
 
 export default function SettingsPage() {
   const locale = useLocale();
   const tHeader = useTranslations('Header');
+  const t = useTranslations('Settings');
   const pathname = usePathname();
   const router = useRouter();
   const [settings, setSettings] = useState({
@@ -133,18 +134,18 @@ export default function SettingsPage() {
     return () => clearTimeout(timer);
   }, [settings, isLoadingSettings]);
 
-  // 定义可用的语言选项
+  // 定义可用的语言选项（根据当前语言本地化）
   const languageOptions = [
-    { value: 'auto', label: '自动检测 (Auto)' },
-    { value: 'zh', label: '中文 (Chinese)' },
-    { value: 'en', label: '英文 (English)' },
-    { value: 'ja', label: '日文 (Japanese)' },
-    { value: 'ko', label: '韩文 (Korean)' },
-    { value: 'fr', label: '法文 (French)' },
-    { value: 'de', label: '德文 (German)' },
-    { value: 'es', label: '西班牙文 (Spanish)' },
-    { value: 'ru', label: '俄文 (Russian)' },
-    { value: 'ar', label: '阿拉伯文 (Arabic)' },
+    { value: 'auto', label: t('langAuto') },
+    { value: 'zh', label: t('langZh') },
+    { value: 'en', label: t('langEn') },
+    { value: 'ja', label: t('langJa') },
+    { value: 'ko', label: t('langKo') },
+    { value: 'fr', label: t('langFr') },
+    { value: 'de', label: t('langDe') },
+    { value: 'es', label: t('langEs') },
+    { value: 'ru', label: t('langRu') },
+    { value: 'ar', label: t('langAr') },
   ];
 
   if (isLoadingSettings) {
@@ -152,7 +153,7 @@ export default function SettingsPage() {
       <div className="container mx-auto p-8">
         <div className="text-center p-8">
           <div className="inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-300">加载设置中...</p>
+          <p className="text-gray-600 dark:text-gray-300">{t('loadingSettings')}</p>
         </div>
       </div>
     );
@@ -161,8 +162,11 @@ export default function SettingsPage() {
   return (
     <div className="container mx-auto p-8 max-w-4xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">⚙️ 设置</h1>
-        <p className="text-gray-600 dark:text-gray-300">配置您的应用程序设置</p>
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2 flex items-center gap-2">
+          <SettingsIcon className="w-6 h-6" aria-hidden="true" />
+          {t('pageTitle')}
+        </h1>
+        <p className="text-gray-600 dark:text-gray-300">{t('pageSubtitle')}</p>
       </div>
 
       <div className="mb-6 flex items-center gap-4">
@@ -184,12 +188,15 @@ export default function SettingsPage() {
       <div className="space-y-8">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">🌓 外观</CardTitle>
-            <CardDescription>切换浅色/深色模式</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <SunMoon className="w-4 h-4" aria-hidden="true" />
+              {t('appearanceTitle')}
+            </CardTitle>
+            <CardDescription>{t('appearanceDesc')}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <div className="font-medium text-gray-800 dark:text-gray-100">主题模式</div>
+              <div className="font-medium text-gray-800 dark:text-gray-100">{t('themeMode')}</div>
               <Select 
                 value={themeMode}
                 onValueChange={(value) => {
@@ -205,15 +212,15 @@ export default function SettingsPage() {
                 }}
               >
                 <SelectTrigger className="w-48">
-                  <SelectValue placeholder="选择主题" />
+                  <SelectValue placeholder={t('themePlaceholder')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="system">跟随系统</SelectItem>
-                  <SelectItem value="light">浅色</SelectItem>
-                  <SelectItem value="dark">深色</SelectItem>
+                  <SelectItem value="system">{t('themeSystem')}</SelectItem>
+                  <SelectItem value="light">{t('themeLight')}</SelectItem>
+                  <SelectItem value="dark">{t('themeDark')}</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-gray-500 dark:text-gray-400">选择“跟随系统”将根据系统外观自动切换。</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t('themeHint')}</p>
             </div>
           </CardContent>
         </Card>
@@ -221,10 +228,11 @@ export default function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              🤖 Whisper Models 路径
+              <Bot className="w-4 h-4" aria-hidden="true" />
+              {t('modelsTitle')}
             </CardTitle>
             <CardDescription>
-              设置 whisper 模型文件所在目录
+              {t('modelsDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -233,14 +241,14 @@ export default function SettingsPage() {
                 type="text" 
                 className="flex-1"
                 value={settings.whisper_models_path || ''}
-                placeholder="未设置 Whisper Models 路径"
+                placeholder={t('modelsPathPlaceholder')}
                 readOnly
               />
               <Button 
                 variant="outline"
                 onClick={() => selectDirectory('whisper_models')}
               >
-                选择目录
+                {t('chooseDirectory')}
               </Button>
             </div>
           </CardContent>
@@ -249,10 +257,11 @@ export default function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              🌍 语音识别语言
+              <Globe className="w-4 h-4" aria-hidden="true" />
+              {t('languageTitle')}
             </CardTitle>
             <CardDescription>
-              选择 Whisper 语音识别的目标语言
+              {t('languageDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -263,7 +272,7 @@ export default function SettingsPage() {
               }}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="选择语言" />
+                <SelectValue placeholder={t('chooseLanguage')} />
               </SelectTrigger>
               <SelectContent>
                 {languageOptions.map((option) => (
@@ -274,7 +283,7 @@ export default function SettingsPage() {
               </SelectContent>
             </Select>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-              选择"自动检测"时，Whisper 会自动识别语言；选择具体语言可以提高识别准确度
+              {t('languageHelp')}
             </p>
           </CardContent>
         </Card>
@@ -284,10 +293,11 @@ export default function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              📁 程序数据目录
+              <Folder className="w-4 h-4" aria-hidden="true" />
+              {t('appDataTitle')}
             </CardTitle>
             <CardDescription>
-              查看和管理应用数据存储位置
+              {t('appDataDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -295,20 +305,20 @@ export default function SettingsPage() {
               {isLoadingAppData ? (
                 <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                   <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                  <span>加载中...</span>
+                  <span>{t('loading')}</span>
                 </div>
               ) : appDataInfo ? (
                 <>
                   <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">存储路径:</span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">{t('appDataPath')}</span>
                         <code className="text-xs bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded font-mono break-all">
                           {appDataInfo.path}
                         </code>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">占用空间:</span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">{t('appDataSize')}</span>
                         <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
                           {appDataInfo.size_formatted}
                         </span>
@@ -322,26 +332,28 @@ export default function SettingsPage() {
                       onClick={openAppDataDirectory}
                       className="flex items-center gap-2"
                     >
-                      📂 打开目录
+                      <FolderOpen className="w-4 h-4" aria-hidden="true" />
+                      {t('openDirectory')}
                     </Button>
                     <Button 
                       variant="outline"
                       onClick={loadAppDataInfo}
                       className="flex items-center gap-2"
                     >
-                      🔄 刷新
+                      <RefreshCw className="w-4 h-4" aria-hidden="true" />
+                      {t('refresh')}
                     </Button>
                   </div>
                   
                   <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                    <p>• 配置文件: settings.json</p>
-                    <p>• 临时文件: temp/（包含 WAV 和 SRT 文件）</p>
-                    <p>• 可以手动清理 temp 目录以释放空间</p>
+                    <p>{t('appDataTips1')}</p>
+                    <p>{t('appDataTips2')}</p>
+                    <p>{t('appDataTips3')}</p>
                   </div>
                 </>
               ) : (
                 <div className="text-gray-500 dark:text-gray-400">
-                  无法加载目录信息
+                  {t('appDataLoadFailed')}
                 </div>
               )}
             </div>
@@ -351,17 +363,18 @@ export default function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              🗣️ 语音活动检测 (VAD)
+              <AudioLines className="w-4 h-4" aria-hidden="true" />
+              {t('vadTitle')}
             </CardTitle>
             <CardDescription>
-              开启后将使用打包的 Silero VAD 模型改进断句
+              {t('vadDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <div className="font-medium text-gray-800 dark:text-gray-100">启用 VAD</div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">执行 whisper-cli 时追加 --vad 与 --vad-model 参数</div>
+                <div className="font-medium text-gray-800 dark:text-gray-100">{t('vadEnable')}</div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">{t('vadHint')}</div>
               </div>
               <Switch
                 checked={settings.enable_vad}
@@ -373,28 +386,31 @@ export default function SettingsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">⚙️ 性能优化</CardTitle>
-            <CardDescription>选择是否使用针对平台的优化版 whisper-cli。选择“不优化”将使用原版。</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <Gauge className="w-4 h-4" aria-hidden="true" />
+              {t('optimizeTitle')}
+            </CardTitle>
+            <CardDescription>{t('optimizeDesc')}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <label className="text-sm text-gray-600 dark:text-gray-300">优化模式</label>
+              <label className="text-sm text-gray-600 dark:text-gray-300">{t('optimizeMode')}</label>
               <Select
                 value={settings.whisper_optimization as any}
                 onValueChange={(v: any) => setSettings(prev => ({ ...prev, whisper_optimization: v }))}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="选择优化模式" />
+                  <SelectValue placeholder={t('optimizePlaceholder')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">无优化（Metal/CPU）</SelectItem>
-                  <SelectItem value="vulkan">Vulkan（Windows/macOS）</SelectItem>
-                  <SelectItem value="coreml">Core ML（macOS）</SelectItem>
+                  <SelectItem value="none">{t('optimizeNone')}</SelectItem>
+                  <SelectItem value="vulkan">{t('optimizeVulkan')}</SelectItem>
+                  <SelectItem value="coreml">{t('optimizeCoreML')}</SelectItem>
                   {/* <SelectItem value="cuda">CUDA（未实现）</SelectItem> */}
                 </SelectContent>
               </Select>
               <div className="text-xs text-gray-500 dark:text-gray-400">
-                - Windows 推荐 Vulkan；macOS 可选 Core ML。未打包的平台版本会无法启动。
+                {t('optimizeHint')}
               </div>
             </div>
           </CardContent>
