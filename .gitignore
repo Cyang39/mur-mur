@@ -25,3 +25,6 @@ dist-ssr
 
 # next.js
 .next
+
+# TypeScript build info
+tsconfig.tsbuildinfo
