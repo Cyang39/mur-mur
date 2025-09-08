@@ -6,7 +6,9 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
 
 const nextConfig: NextConfig = {
   // Configure Tauri
-  assetPrefix: process.env.NODE_ENV === 'production' ? './' : undefined,
+  // Use absolute asset paths in production; relative prefixes like './'
+  // break client-side chunk loading on nested routes in export builds.
+  assetPrefix: undefined,
   trailingSlash: true,
   images: {
     unoptimized: true
