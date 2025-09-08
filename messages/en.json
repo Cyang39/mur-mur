@@ -2,6 +2,7 @@
   "Home": {
     "noGpu": "No GPU",
     "threads": "Threads",
+    "vad": "VAD",
     "dragHere": "Drag a video or audio file here",
     "or": "or",
     "chooseFile": "Choose File",

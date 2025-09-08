@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Switch } from '@/components/ui/switch';
 import {useLocale, useTranslations} from 'next-intl'
 import {usePathname, useRouter} from 'next/navigation'
-import { Languages, Settings as SettingsIcon, SunMoon, Bot, Globe, Folder, FolderOpen, RefreshCw, AudioLines, Gauge } from 'lucide-react'
+import { Languages, Settings as SettingsIcon, SunMoon, Bot, Globe, Folder, FolderOpen, RefreshCw, Gauge } from 'lucide-react'
 
 export default function SettingsPage() {
   const locale = useLocale();
@@ -360,29 +360,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AudioLines className="w-4 h-4" aria-hidden="true" />
-              {t('vadTitle')}
-            </CardTitle>
-            <CardDescription>
-              {t('vadDesc')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-medium text-gray-800 dark:text-gray-100">{t('vadEnable')}</div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">{t('vadHint')}</div>
-              </div>
-              <Switch
-                checked={settings.enable_vad}
-                onCheckedChange={(v) => setSettings(prev => ({ ...prev, enable_vad: v }))}
-              />
-            </div>
-          </CardContent>
-        </Card>
+        {/* VAD 开关已移至首页 */}
 
         <Card>
           <CardHeader>

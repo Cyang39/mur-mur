@@ -2,6 +2,7 @@
   "Home": {
     "noGpu": "不使用 GPU",
     "threads": "线程",
+    "vad": "VAD",
     "dragHere": "将视频或音频文件拖拽到此处",
     "or": "或者",
     "chooseFile": "选择文件",

@@ -39,6 +39,7 @@ export default function HomePage() {
     whisper_models_path: null as string | null,
     whisper_language: 'auto' as string,
     whisper_model: 'ggml-large-v3.bin' as string,
+    enable_vad: false as boolean,
     disable_gpu: false as boolean,
     thread_count: 4 as number,
   });
@@ -304,6 +305,16 @@ export default function HomePage() {
     }
   };
 
+  const toggleVad = async (v: boolean) => {
+    const next = { ...settings, enable_vad: v } as any;
+    setSettings(next);
+    try {
+      await invoke('save_settings', { settings: next });
+    } catch (e) {
+      console.error('保存设置失败:', e);
+    }
+  };
+
   const changeThreads = async (vals: number[]) => {
     const n = Math.max(1, Math.min(8, Math.round(vals[0] ?? 4)));
     const next = { ...settings, thread_count: n } as any;
@@ -359,6 +370,8 @@ export default function HomePage() {
         <div className="flex items-center justify-end gap-6 mt-6">
           <span className="text-sm text-gray-600 dark:text-gray-300">{t('noGpu')}</span>
           <Switch checked={!!settings.disable_gpu} onCheckedChange={toggleNoGpu} />
+          <span className="text-sm text-gray-600 dark:text-gray-300">{t('vad')}</span>
+          <Switch checked={!!settings.enable_vad} onCheckedChange={toggleVad} />
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-600 dark:text-gray-300">{t('threads')}: {settings.thread_count}</span>
             <Slider min={1} max={8} step={1} value={[settings.thread_count]} onValueChange={changeThreads} />
@@ -553,4 +566,3 @@ export default function HomePage() {
 
   return renderMainContent();
 }
-
