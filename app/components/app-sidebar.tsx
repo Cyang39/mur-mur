@@ -3,6 +3,7 @@
 import { Home, Settings, Info, Brain } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {useLocale} from 'next-intl'
 import {
   Sidebar,
   SidebarContent,
@@ -19,28 +20,14 @@ type AppSidebarProps = {};
 
 export function AppSidebar({}: AppSidebarProps) {
   const pathname = usePathname();
+  const locale = useLocale();
   
+  const base = `/${locale}`;
   const items = [
-    {
-      title: "Home",
-      href: "/",
-      icon: Home,
-    },
-    {
-      title: "AI Models",
-      href: "/models",
-      icon: Brain,
-    },
-    {
-      title: "Settings",
-      href: "/settings",
-      icon: Settings,
-    },
-    {
-      title: "About",
-      href: "/about",
-      icon: Info,
-    },
+    { title: "Home", href: base, icon: Home },
+    { title: "AI Models", href: `${base}/models`, icon: Brain },
+    { title: "Settings", href: `${base}/settings`, icon: Settings },
+    { title: "About", href: `${base}/about`, icon: Info },
   ];
 
   return (

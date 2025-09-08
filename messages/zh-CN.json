@@ -1,0 +1,28 @@
+{
+  "Home": {
+    "noGpu": "不使用 GPU",
+    "threads": "线程",
+    "dragHere": "将视频或音频文件拖拽到此处",
+    "or": "或者",
+    "chooseFile": "选择文件",
+    "processing": "处理中...",
+    "start": "开始处理",
+    "recognizing": "语音识别中...",
+    "clearFile": "清除文件",
+    "speechResults": "语音识别结果",
+    "stop": "停止",
+    "confirmStopTitle": "确认停止当前识别？",
+    "confirmStopDesc": "停止后本次识别将被终止且无法继续。",
+    "cancel": "取消",
+    "confirm": "确定停止",
+    "saveSrt": "保存SRT",
+    "copy": "复制",
+    "waiting": "等待输出..."
+  },
+  "Header": {
+    "language": "语言",
+    "zh": "中文",
+    "en": "英文"
+  }
+}
+

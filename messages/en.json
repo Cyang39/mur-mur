@@ -1,0 +1,28 @@
+{
+  "Home": {
+    "noGpu": "No GPU",
+    "threads": "Threads",
+    "dragHere": "Drag a video or audio file here",
+    "or": "or",
+    "chooseFile": "Choose File",
+    "processing": "Processing...",
+    "start": "Start",
+    "recognizing": "Recognizing...",
+    "clearFile": "Clear",
+    "speechResults": "Speech Recognition Result",
+    "stop": "Stop",
+    "confirmStopTitle": "Stop current recognition?",
+    "confirmStopDesc": "Stopping will terminate this run and cannot be resumed.",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "saveSrt": "Save SRT",
+    "copy": "Copy",
+    "waiting": "Waiting for output..."
+  },
+  "Header": {
+    "language": "Language",
+    "zh": "Chinese",
+    "en": "English"
+  }
+}
+

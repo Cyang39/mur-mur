@@ -7,8 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
+import {useLocale, useTranslations} from 'next-intl'
+import {usePathname, useRouter} from 'next/navigation'
 
 export default function SettingsPage() {
+  const locale = useLocale();
+  const tHeader = useTranslations('Header');
+  const pathname = usePathname();
+  const router = useRouter();
   const [settings, setSettings] = useState({
     whisper_models_path: null as string | null,
     whisper_language: 'auto' as string,
@@ -16,6 +22,24 @@ export default function SettingsPage() {
     enable_vad: false as boolean,
     whisper_optimization: 'none' as any,
   });
+  
+  const switchLocale = (nextLocale: 'zh-CN' | 'en') => {
+    if (nextLocale === locale) return;
+    // Persist selection to settings.json
+    const updated = { ...(settings as any), app_locale: nextLocale } as any;
+    setSettings(updated);
+    invoke('save_settings', { settings: updated }).catch((error) => {
+      console.error('保存语言设置失败:', error);
+    });
+    // Replace the first path segment with new locale
+    const segments = pathname.split('/').filter(Boolean);
+    if (segments.length === 0) {
+      router.replace(`/${nextLocale}`);
+      return;
+    }
+    segments[0] = nextLocale;
+    router.replace('/' + segments.join('/'));
+  };
   const [themeMode, setThemeMode] = useState<'system' | 'light' | 'dark'>('system');
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const [appDataInfo, setAppDataInfo] = useState<{
@@ -134,6 +158,18 @@ export default function SettingsPage() {
 
   return (
     <div className="container mx-auto p-8 max-w-4xl">
+      <div className="mb-6 flex items-center gap-4">
+        <span className="text-sm text-gray-600 dark:text-gray-300">{tHeader('language')}</span>
+        <Select value={locale as 'zh-CN' | 'en'} onValueChange={(v) => switchLocale(v as 'zh-CN' | 'en')}>
+          <SelectTrigger className="w-44">
+            <SelectValue placeholder={tHeader('language')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="zh-CN">{tHeader('zh')}</SelectItem>
+            <SelectItem value="en">{tHeader('en')}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">⚙️ 设置</h1>
         <p className="text-gray-600 dark:text-gray-300">配置您的应用程序设置</p>

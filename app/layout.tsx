@@ -1,9 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
-import { SidebarProvider } from '@/components/ui/sidebar';
-import { AppSidebar } from '@/components/app-sidebar';
-import { MainContent } from './components/main-content';
-import { ProcessingProvider } from './contexts/ProcessingContext';
+// Note: App shell and providers moved to app/[locale]/layout.tsx for i18n
 
 export const metadata: Metadata = {
   title: 'MurMur',
@@ -24,14 +21,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body>
-        <ProcessingProvider>
-          <SidebarProvider className="h-screen">
-            <AppSidebar />
-            <MainContent>{children}</MainContent>
-          </SidebarProvider>
-        </ProcessingProvider>
-      </body>
+      <body>{children}</body>
     </html>
   )
 }
