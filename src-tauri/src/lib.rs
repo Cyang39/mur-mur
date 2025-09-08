@@ -9,6 +9,8 @@ use std::path::{Path, PathBuf};
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct AppSettings {
     whisper_models_path: Option<String>,
+    #[serde(default = "default_app_locale")]
+    app_locale: String,
     #[serde(default = "default_whisper_language")]
     whisper_language: String,
     #[serde(default = "default_whisper_model")]
@@ -27,6 +29,11 @@ fn default_whisper_language() -> String {
     "auto".to_string()
 }
 
+fn default_app_locale() -> String {
+    // 与前端 next-intl 配置一致：默认 zh-CN
+    "zh-CN".to_string()
+}
+
 fn default_whisper_model() -> String {
     "ggml-large-v3.bin".to_string()
 }
@@ -42,6 +49,7 @@ impl Default for AppSettings {
     fn default() -> Self {
         Self {
             whisper_models_path: None,
+            app_locale: default_app_locale(),
             whisper_language: "auto".to_string(),
             whisper_model: "ggml-large-v3.bin".to_string(),
             enable_vad: false,

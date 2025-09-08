@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Switch } from '@/components/ui/switch';
 import {useLocale, useTranslations} from 'next-intl'
 import {usePathname, useRouter} from 'next/navigation'
+import { Languages } from 'lucide-react'
 
 export default function SettingsPage() {
   const locale = useLocale();
@@ -17,6 +18,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const [settings, setSettings] = useState({
     whisper_models_path: null as string | null,
+    app_locale: locale as string,
     whisper_language: 'auto' as string,
     whisper_model: 'ggml-large-v3.bin' as string,
     enable_vad: false as boolean,
@@ -158,21 +160,25 @@ export default function SettingsPage() {
 
   return (
     <div className="container mx-auto p-8 max-w-4xl">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">⚙️ 设置</h1>
+        <p className="text-gray-600 dark:text-gray-300">配置您的应用程序设置</p>
+      </div>
+
       <div className="mb-6 flex items-center gap-4">
-        <span className="text-sm text-gray-600 dark:text-gray-300">{tHeader('language')}</span>
+        <span className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2">
+          <Languages className="w-4 h-4" aria-hidden="true" />
+          {tHeader('language')}
+        </span>
         <Select value={locale as 'zh-CN' | 'en'} onValueChange={(v) => switchLocale(v as 'zh-CN' | 'en')}>
           <SelectTrigger className="w-44">
             <SelectValue placeholder={tHeader('language')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="zh-CN">{tHeader('zh')}</SelectItem>
-            <SelectItem value="en">{tHeader('en')}</SelectItem>
+            <SelectItem value="zh-CN">中文</SelectItem>
+            <SelectItem value="en">English</SelectItem>
           </SelectContent>
         </Select>
-      </div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">⚙️ 设置</h1>
-        <p className="text-gray-600 dark:text-gray-300">配置您的应用程序设置</p>
       </div>
       
       <div className="space-y-8">
