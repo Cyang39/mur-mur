@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { useProcessing } from '@/contexts/ProcessingContext';
+import { Folder, FileVideo, FileAudio, Mic, Timer as TimerIcon, Save, Copy as CopyIcon, StopCircle } from 'lucide-react'
 import { 
   AlertDialog,
   AlertDialogTrigger,
@@ -182,7 +183,7 @@ export default function HomePage() {
       
       updateState({
         isWhisperRunning: true,
-        processResult: '正在进行语音识别...',
+        processResult: t('recognizing'),
         currentProgress: 0,
         progressPercentage: 0,
       });
@@ -389,7 +390,9 @@ export default function HomePage() {
         >
           {!selectedFile ? (
             <>
-              <div className="text-6xl mb-5 opacity-60">📁</div>
+              <div className="mb-5 opacity-60 text-gray-700 dark:text-gray-200">
+                <Folder className="w-16 h-16" />
+              </div>
               <p className="text-xl text-gray-600 dark:text-gray-300 mb-3 font-medium">
                 {t('dragHere')}
               </p>
@@ -402,8 +405,12 @@ export default function HomePage() {
             </>
           ) : (
             <div className="flex items-center gap-5 text-left w-full max-w-xl">
-              <div className="text-5xl flex-shrink-0">
-                {selectedFile.type.startsWith('video/') ? '🎬' : '🎵'}
+              <div className="flex-shrink-0 text-gray-700 dark:text-gray-200">
+                {selectedFile.type.startsWith('video/') ? (
+                  <FileVideo className="w-12 h-12" />
+                ) : (
+                  <FileAudio className="w-12 h-12" />
+                )}
               </div>
               <div className="flex-1">
                 <h3 className="m-0 mb-2 text-gray-800 dark:text-gray-100 text-xl break-all">{selectedFile.name}</h3>
@@ -451,9 +458,9 @@ export default function HomePage() {
             <div className="flex flex-col items-center gap-3">
               <div className="flex items-center justify-center gap-2">
                 <span>{processResult}</span>
-                {(isWhisperRunning && processResult.includes('语音识别')) || (processResult.includes('语音识别完成') && recognitionElapsedTime > 0) ? (
-                  <span className="font-mono text-sm bg-blue-100 dark:bg-blue-900/50 px-2 py-1 rounded border">
-                    ⏱️ {formatElapsedTime(recognitionElapsedTime)}
+                {(isWhisperRunning) || (hasSrtFile && recognitionElapsedTime > 0) ? (
+                  <span className="font-mono text-sm bg-blue-100 dark:bg-blue-900/50 px-2 py-1 rounded border inline-flex items-center gap-1">
+                    <TimerIcon className="w-4 h-4" /> {formatElapsedTime(recognitionElapsedTime)}
                   </span>
                 ) : null}
               </div>
@@ -488,7 +495,9 @@ export default function HomePage() {
         {(isWhisperRunning || whisperOutput.length > 0) && (
           <div className="my-8 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800">
             <div className="flex justify-between items-center px-5 py-4 border-b border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-t-lg">
-              <h3 className="m-0 text-gray-800 dark:text-gray-100 text-lg">🎤 {t('speechResults')}</h3>
+              <h3 className="m-0 text-gray-800 dark:text-gray-100 text-lg flex items-center gap-2">
+                <Mic className="w-5 h-5" /> {t('speechResults')}
+              </h3>
               <div className="flex gap-2">
                 {isWhisperRunning && (
                   <AlertDialog open={stopDialogOpen} onOpenChange={setStopDialogOpen}>
@@ -497,7 +506,7 @@ export default function HomePage() {
                         variant="destructive"
                         size="sm"
                       >
-                        ⏹ {t('stop')}
+                        <StopCircle className="w-4 h-4 mr-1" /> {t('stop')}
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
@@ -531,7 +540,7 @@ export default function HomePage() {
                     onClick={saveSrtFile}
                     disabled={isWhisperRunning}
                   >
-                    📁 {t('saveSrt')}
+                    <Save className="w-4 h-4 mr-1" /> {t('saveSrt')}
                   </Button>
                 )}
                 <Button 
@@ -540,7 +549,7 @@ export default function HomePage() {
                   onClick={copyWhisperOutput}
                   disabled={isWhisperRunning || whisperOutput.length === 0}
                 >
-                  📋 {t('copy')}
+                  <CopyIcon className="w-4 h-4 mr-1" /> {t('copy')}
                 </Button>
               </div>
             </div>
