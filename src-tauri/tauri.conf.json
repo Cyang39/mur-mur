@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "murmur",
+  "productName": "MurMur",
   "version": "0.1.0",
   "identifier": "site.lalafell.murmur",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "murmur",
+        "title": "MurMur",
         "width": 1000,
         "height": 800
       }
