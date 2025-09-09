@@ -11,7 +11,7 @@ export default function IndexRedirect() {
     try {
       const saved = localStorage.getItem('app_locale')
       if (saved === 'zh-CN' || saved === 'en') {
-        router.replace(`/${saved}`)
+        router.replace(`/${saved}/home`)
         return
       }
     } catch {}
@@ -25,13 +25,13 @@ export default function IndexRedirect() {
         if (locale === 'zh-CN' || locale === 'en') {
           // Sync to localStorage for faster next boot
           try { localStorage.setItem('app_locale', locale) } catch {}
-          router.replace(`/${locale}`)
+          router.replace(`/${locale}/home`)
           return
         }
       } catch {}
 
       // 3) Final fallback: default to zh-CN
-      router.replace('/zh-CN')
+      router.replace('/en/home')
     })()
   }, [router])
 

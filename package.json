@@ -21,6 +21,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.542.0",
+    "zustand": "^4.5.5",
     "next": "^15.5.2",
     "next-intl": "^4.3.6",
     "react": "^19.1.0",

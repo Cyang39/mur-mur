@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import {useLocale, useTranslations} from 'next-intl'
 import {usePathname, useRouter} from 'next/navigation'
 import { Languages, Settings as SettingsIcon, SunMoon, Bot, Globe, Folder, FolderOpen, RefreshCw, Gauge } from 'lucide-react'
+import { useSettingsStore } from '@/hooks/settingsStore'
 
 export default function SettingsPage() {
   const locale = useLocale();
@@ -16,24 +17,20 @@ export default function SettingsPage() {
   const t = useTranslations('Settings');
   const pathname = usePathname();
   const router = useRouter();
-  const EMBEDDED_MODEL = 'ggml-tiny-q5_1.bin';
-  const [settings, setSettings] = useState({
-    whisper_models_path: null as string | null,
-    app_locale: locale as string,
-    whisper_language: 'auto' as string,
-    whisper_model: EMBEDDED_MODEL as string,
-    enable_vad: false as boolean,
-    whisper_optimization: 'none' as any,
-  });
+  const {
+    settings,
+    isLoading: isLoadingSettings,
+    load,
+    setLocale: setAppLocale,
+    setWhisperLanguage,
+    setOptimization,
+    chooseModelsDirectory
+  } = useSettingsStore()
   
   const switchLocale = (nextLocale: 'zh-CN' | 'en') => {
     if (nextLocale === locale) return;
     // Persist selection to settings.json
-    const updated = { ...(settings as any), app_locale: nextLocale } as any;
-    setSettings(updated);
-    invoke('save_settings', { settings: updated }).catch((error) => {
-      console.error('保存语言设置失败:', error);
-    });
+    setAppLocale(nextLocale, 'immediate')
     // Also persist to localStorage for fast client-side boot
     try {
       localStorage.setItem('app_locale', nextLocale)
@@ -50,7 +47,7 @@ export default function SettingsPage() {
     router.replace('/' + segments.join('/'));
   };
   const [themeMode, setThemeMode] = useState<'system' | 'light' | 'dark'>('system');
-  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+  // isLoadingSettings 来自 store
   const [appDataInfo, setAppDataInfo] = useState<{
     path: string;
     size_bytes: number;
@@ -81,39 +78,16 @@ export default function SettingsPage() {
     }
   };
 
-  // 加载设置
-  const loadSettings = async () => {
-    try {
-      const result = await invoke('load_settings');
-      setSettings(result as any);
-    } catch (error) {
-      console.error('加载设置失败:', error);
-    } finally {
-      setIsLoadingSettings(false);
-    }
-  };
-
-  // 已移除手动保存函数，改为自动保存
-
   // 选择目录
   const selectDirectory = async (type: 'whisper_models') => {
-    try {
-      const result = await invoke('select_directory');
-      if (result) {
-        setSettings(prev => ({
-          ...prev,
-          [`${type}_path`]: result as string
-        }));
-      }
-    } catch (error) {
-      console.error('选择目录失败:', error);
-      alert(`选择目录失败: ${error}`);
+    if (type === 'whisper_models') {
+      await chooseModelsDirectory()
     }
   };
 
   // 组件加载时自动加载设置
   useEffect(() => {
-    loadSettings();
+    load();
     loadAppDataInfo();
     // 初始化主题状态
     if (typeof window !== 'undefined') {
@@ -130,15 +104,7 @@ export default function SettingsPage() {
   }, []);
 
   // 设置变更时自动保存（带轻微防抖）
-  useEffect(() => {
-    if (isLoadingSettings) return;
-    const timer = setTimeout(() => {
-      invoke('save_settings', { settings }).catch((error) => {
-        console.error('自动保存设置失败:', error);
-      });
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [settings, isLoadingSettings]);
+  // 保存逻辑已集中在 zustand store 内部（带防抖）
 
   // 定义可用的语言选项（根据当前语言本地化）
   const languageOptions = [
@@ -273,9 +239,7 @@ export default function SettingsPage() {
           <CardContent>
             <Select 
               value={settings.whisper_language}
-              onValueChange={(value) => {
-                setSettings(prev => ({ ...prev, whisper_language: value }));
-              }}
+              onValueChange={(value) => setWhisperLanguage(value, 'debounced')}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder={t('chooseLanguage')} />
@@ -381,8 +345,8 @@ export default function SettingsPage() {
               <label className="text-sm text-gray-600 dark:text-gray-300">{t('optimizeMode')}</label>
               <Select
                 value={settings.whisper_optimization as any}
-                onValueChange={(v: any) => setSettings(prev => ({ ...prev, whisper_optimization: v }))}
-              >
+                onValueChange={(v: any) => setOptimization(v, 'debounced')}
+            >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder={t('optimizePlaceholder')} />
                 </SelectTrigger>

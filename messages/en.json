@@ -78,5 +78,12 @@
     "optimizeCoreML": "Core ML (macOS)",
     "optimizeHint": "- Windows: Vulkan recommended; macOS: Core ML optional. Unpacked variants won’t launch.",
     "loadingSettings": "Loading settings..."
+  },
+  "Sidebar": {
+    "app": "App",
+    "home": "Home",
+    "models": "AI Models",
+    "settings": "Settings",
+    "about": "About"
   }
 }

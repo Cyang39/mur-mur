@@ -78,5 +78,12 @@
     "optimizeCoreML": "Core ML（macOS）",
     "optimizeHint": "- Windows 推荐 Vulkan；macOS 可选 Core ML。未打包的平台版本会无法启动。",
     "loadingSettings": "加载设置中..."
+  },
+  "Sidebar": {
+    "app": "应用程序",
+    "home": "首页",
+    "models": "AI 模型",
+    "settings": "设置",
+    "about": "关于"
   }
 }

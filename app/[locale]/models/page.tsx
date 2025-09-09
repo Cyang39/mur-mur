@@ -5,15 +5,19 @@ import { invoke } from "@tauri-apps/api/core";
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useSettingsStore } from '@/hooks/settingsStore'
 
 export default function ModelsPage() {
   const EMBEDDED_MODEL = 'ggml-tiny-q5_1.bin';
-  const [settings, setSettings] = useState({
-    whisper_models_path: null as string | null,
-    whisper_language: 'auto' as string,
-    whisper_model: EMBEDDED_MODEL as string,
-  });
-  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+  const {
+    settings,
+    isLoading: isLoadingSettings,
+    load: loadSettings,
+    save: saveSettings,
+    chooseModelsDirectory,
+    setModelName,
+    setWhisperLanguage,
+  } = useSettingsStore()
   const [modelStatus, setModelStatus] = useState<'checking' | 'exists' | 'missing' | 'unknown'>('unknown');
   const [coreMLStatus, setCoreMLStatus] = useState<'checking' | 'supported' | 'not-supported' | 'unknown'>('unknown');
 
@@ -69,43 +73,11 @@ export default function ModelsPage() {
     }
   };
 
-  // 加载设置
-  const loadSettings = async () => {
-    try {
-      const result = await invoke('load_settings');
-      setSettings(result as any);
-    } catch (error) {
-      console.error('加载设置失败:', error);
-    } finally {
-      setIsLoadingSettings(false);
-    }
-  };
-
-  // 保存设置
-  const saveSettings = async () => {
-    try {
-      await invoke('save_settings', { settings });
-      alert('设置保存成功！');
-    } catch (error) {
-      console.error('保存设置失败:', error);
-      alert(`保存设置失败: ${error}`);
-    }
-  };
+  // 加载/保存由 store 提供
 
   // 选择目录
   const selectDirectory = async () => {
-    try {
-      const result = await invoke('select_directory');
-      if (result) {
-        setSettings(prev => ({
-          ...prev,
-          whisper_models_path: result as string
-        }));
-      }
-    } catch (error) {
-      console.error('选择目录失败:', error);
-      alert(`选择目录失败: ${error}`);
-    }
+    await chooseModelsDirectory()
   };
 
   // 组件加载时自动加载设置
@@ -187,9 +159,7 @@ export default function ModelsPage() {
           <div className="space-y-4">
             <Select 
               value={settings.whisper_model}
-              onValueChange={(value) => {
-                setSettings(prev => ({ ...prev, whisper_model: value }));
-              }}
+              onValueChange={(value) => setModelName(value, 'debounced')}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="选择模型" />
@@ -320,9 +290,7 @@ export default function ModelsPage() {
         <CardContent>
           <Select 
             value={settings.whisper_language}
-            onValueChange={(value) => {
-              setSettings(prev => ({ ...prev, whisper_language: value }));
-            }}
+            onValueChange={(value) => setWhisperLanguage(value, 'debounced')}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="选择语言" />

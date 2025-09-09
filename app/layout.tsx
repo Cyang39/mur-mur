@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import Script from 'next/script'
 import './globals.css'
-// Note: App shell and providers moved to app/[locale]/layout.tsx for i18n
 
 export const metadata: Metadata = {
   title: 'MurMur',

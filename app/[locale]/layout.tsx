@@ -19,7 +19,7 @@ async function loadMessages(locale: string) {
       case 'zh-CN':
         return (await import('../../messages/zh-CN.json')).default
       default:
-        return (await import('../../messages/zh-CN.json')).default
+        return (await import('../../messages/en.json')).default
     }
   } catch {
     return {} as any
@@ -31,9 +31,9 @@ export default async function LocaleLayout({
   params
 }: {
   children: ReactNode
-  params: Promise<any>
+  params: { locale: string }
 }) {
-  const {locale} = await params
+  const {locale} = params
   if (!locales.includes(locale as any)) {
     notFound()
   }
