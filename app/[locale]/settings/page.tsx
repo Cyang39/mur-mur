@@ -34,6 +34,12 @@ export default function SettingsPage() {
     invoke('save_settings', { settings: updated }).catch((error) => {
       console.error('保存语言设置失败:', error);
     });
+    // Also persist to localStorage for fast client-side boot
+    try {
+      localStorage.setItem('app_locale', nextLocale)
+      // update <html lang> for accessibility/SEO semantics
+      document.documentElement.lang = nextLocale
+    } catch {}
     // Replace the first path segment with new locale
     const segments = pathname.split('/').filter(Boolean);
     if (segments.length === 0) {

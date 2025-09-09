@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Script from 'next/script'
 import './globals.css'
 // Note: App shell and providers moved to app/[locale]/layout.tsx for i18n
 
@@ -15,11 +16,15 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(() => {try{const t=localStorage.getItem('theme');const m=window.matchMedia('(prefers-color-scheme: dark)');const f=()=>{const d=(t==='dark')||((!t||t==='system')&&m.matches);const r=document.documentElement;r.classList[d?'add':'remove']('dark');};f();}catch(e){}})();`,
-          }}
-        />
+        <Script id="theme-init" strategy="beforeInteractive">
+          {`try{
+            var t=localStorage.getItem('theme');
+            var m=window.matchMedia('(prefers-color-scheme: dark)');
+            var d=(t==='dark')||((!t||t==='system')&&m.matches);
+            var r=document.documentElement;
+            if(d){r.classList.add('dark')}else{r.classList.remove('dark')}
+          }catch(e){}`}
+        </Script>
       </head>
       <body>{children}</body>
     </html>
