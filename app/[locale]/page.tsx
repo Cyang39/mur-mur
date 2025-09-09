@@ -36,10 +36,11 @@ export default function HomePage() {
   } = state;
   
   const [isDragging, setIsDragging] = useState(false);
+  const EMBEDDED_MODEL = 'ggml-tiny-q5_1.bin';
   const [settings, setSettings] = useState({
     whisper_models_path: null as string | null,
     whisper_language: 'auto' as string,
-    whisper_model: 'ggml-large-v3.bin' as string,
+    whisper_model: EMBEDDED_MODEL as string,
     enable_vad: false as boolean,
     disable_gpu: false as boolean,
     thread_count: 4 as number,
@@ -101,7 +102,8 @@ export default function HomePage() {
   const processMediaFile = async () => {
     if (!selectedFile) return;
     
-    if (!settings.whisper_models_path) {
+    // 使用内置模型时无需配置 Models 路径
+    if (!settings.whisper_models_path && settings.whisper_model !== EMBEDDED_MODEL) {
       alert('请先在设置页面配置 Whisper Models 路径！');
       return;
     }
@@ -124,7 +126,7 @@ export default function HomePage() {
       console.error('检查模型失败:', error);
       const errorMessage = typeof error === 'string' ? error : String(error);
       
-      if (errorMessage.includes('请在设置中配置')) {
+      if (errorMessage.includes('请在设置中配置') && settings.whisper_model !== EMBEDDED_MODEL) {
         alert('❌ 请先在设置页面配置 Whisper Models 路径！');
       } else {
         alert(`❌ 检查模型失败：${errorMessage}\n\n请检查：\n• Models 路径是否正确配置\n• 是否有访问权限`);
@@ -271,9 +273,10 @@ export default function HomePage() {
   };
   
   const checkModelStatus = async () => {
-    if (!settings.whisper_models_path || !settings.whisper_model) {
-      return;
-    }
+    if (!settings.whisper_model) return;
+    // 内置模型直接视为存在
+    if (settings.whisper_model === EMBEDDED_MODEL) return;
+    if (!settings.whisper_models_path) return;
     
     try {
       const modelExists = await invoke('check_model_exists', {

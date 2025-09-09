@@ -16,11 +16,12 @@ export default function SettingsPage() {
   const t = useTranslations('Settings');
   const pathname = usePathname();
   const router = useRouter();
+  const EMBEDDED_MODEL = 'ggml-tiny-q5_1.bin';
   const [settings, setSettings] = useState({
     whisper_models_path: null as string | null,
     app_locale: locale as string,
     whisper_language: 'auto' as string,
-    whisper_model: 'ggml-large-v3.bin' as string,
+    whisper_model: EMBEDDED_MODEL as string,
     enable_vad: false as boolean,
     whisper_optimization: 'none' as any,
   });

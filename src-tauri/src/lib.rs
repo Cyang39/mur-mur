@@ -35,7 +35,8 @@ fn default_app_locale() -> String {
 }
 
 fn default_whisper_model() -> String {
-    "ggml-large-v3.bin".to_string()
+    // 默认使用打包内置的轻量模型，免配置即可运行
+    "ggml-tiny-q5_1.bin".to_string()
 }
 
 fn default_whisper_optimization() -> String {
@@ -51,7 +52,7 @@ impl Default for AppSettings {
             whisper_models_path: None,
             app_locale: default_app_locale(),
             whisper_language: "auto".to_string(),
-            whisper_model: "ggml-large-v3.bin".to_string(),
+            whisper_model: default_whisper_model(),
             enable_vad: false,
             whisper_optimization: default_whisper_optimization(),
             disable_gpu: false,
@@ -853,16 +854,32 @@ async fn start_whisper_recognition(
     let settings = load_settings(app_handle.clone()).await
         .map_err(|e| format!("加载设置失败: {}", e))?;
     
-    let whisper_models_path = settings.whisper_models_path
-        .ok_or("请在设置中配置 Whisper Models 路径")?;
-    
-    let model_file = std::path::Path::new(&whisper_models_path).join(&settings.whisper_model);
+    // 允许选择内置打包模型：无需配置 models 路径
+    let embedded_model_name = "ggml-tiny-q5_1.bin".to_string();
+    let using_embedded = settings.whisper_model == embedded_model_name;
+    let (model_file, models_dir_display) = if using_embedded {
+        // 解析打包资源中的模型路径
+        let p = app_handle
+            .path()
+            .resolve("resources/ggml-tiny-q5_1.bin", BaseDirectory::Resource)
+            .map_err(|e| format!("解析内置模型路径失败: {}", e))?;
+        (p, "<内置模型>".to_string())
+    } else {
+        // 借用而不是移动 whisper_models_path，避免后续使用
+        let whisper_models_path = settings
+            .whisper_models_path
+            .as_ref()
+            .ok_or("请在设置中配置 Whisper Models 路径")?;
+        let p = std::path::Path::new(whisper_models_path).join(&settings.whisper_model);
+        (p, whisper_models_path.to_string())
+    };
     
     // 检查模型文件是否存在
     if !model_file.exists() {
-        return Err(format!("模型文件不存在: {}\n\n请确保在 Models 目录 ({}) 中有对应的模型文件。\n\n您可以从以下地址下载模型：\n- https://huggingface.co/ggerganov/whisper.cpp/tree/main\n- 或使用 whisper.cpp 的 download-ggml-model.sh 脚本", 
-            settings.whisper_model, 
-            whisper_models_path
+        return Err(format!(
+            "模型文件不存在: {}\n\n请确保在 Models 目录 ({}) 中有对应的模型文件。\n\n您可以从以下地址下载模型：\n- https://huggingface.co/ggerganov/whisper.cpp/tree/main\n- 或使用 whisper.cpp 的 download-ggml-model.sh 脚本",
+            settings.whisper_model,
+            models_dir_display
         ));
     }
     
@@ -1027,6 +1044,10 @@ async fn check_model_exists(
     app_handle: tauri::AppHandle,
     model_name: String,
 ) -> Result<bool, String> {
+    // 内置模型：直接返回存在
+    if model_name == "ggml-tiny-q5_1.bin" {
+        return Ok(true);
+    }
     // 加载设置
     let settings = load_settings(app_handle.clone()).await
         .map_err(|e| format!("加载设置失败: {}", e))?;
@@ -1059,6 +1080,10 @@ async fn check_coreml_support(
     app_handle: tauri::AppHandle,
     model_name: String,
 ) -> Result<bool, String> {
+    // 内置 ggml 模型不涉及 Core ML 打包
+    if model_name == "ggml-tiny-q5_1.bin" {
+        return Ok(false);
+    }
     // 加载设置
     let settings = load_settings(app_handle.clone()).await
         .map_err(|e| format!("加载设置失败: {}", e))?;

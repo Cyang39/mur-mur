@@ -7,10 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function ModelsPage() {
+  const EMBEDDED_MODEL = 'ggml-tiny-q5_1.bin';
   const [settings, setSettings] = useState({
     whisper_models_path: null as string | null,
     whisper_language: 'auto' as string,
-    whisper_model: 'ggml-large-v3.bin' as string,
+    whisper_model: EMBEDDED_MODEL as string,
   });
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const [modelStatus, setModelStatus] = useState<'checking' | 'exists' | 'missing' | 'unknown'>('unknown');
@@ -18,8 +19,13 @@ export default function ModelsPage() {
 
   // 检查 Core ML 优化支持
   const checkCoreMLSupport = async () => {
-    if (!settings.whisper_models_path || !settings.whisper_model) {
+    if (!settings.whisper_model) {
       setCoreMLStatus('unknown');
+      return;
+    }
+    // 内置模型不支持 Core ML
+    if (settings.whisper_model === EMBEDDED_MODEL) {
+      setCoreMLStatus('not-supported');
       return;
     }
     
@@ -37,7 +43,16 @@ export default function ModelsPage() {
 
   // 检查模型状态
   const checkModelStatus = async () => {
-    if (!settings.whisper_models_path || !settings.whisper_model) {
+    if (!settings.whisper_model) {
+      setModelStatus('unknown');
+      return;
+    }
+    // 选择内置模型时，认为已存在
+    if (settings.whisper_model === EMBEDDED_MODEL) {
+      setModelStatus('exists');
+      return;
+    }
+    if (!settings.whisper_models_path) {
       setModelStatus('unknown');
       return;
     }
@@ -150,7 +165,7 @@ export default function ModelsPage() {
               选择目录
             </Button>
           </div>
-          {!settings.whisper_models_path && (
+          {!settings.whisper_models_path && settings.whisper_model !== EMBEDDED_MODEL && (
             <p className="text-sm text-orange-600 dark:text-orange-400">
               ⚠️ 请先配置模型文件目录才能使用 AI 功能
             </p>
@@ -180,6 +195,7 @@ export default function ModelsPage() {
                 <SelectValue placeholder="选择模型" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value={EMBEDDED_MODEL}>Tiny Q5_1（内置，打包资源）</SelectItem>
                 <SelectItem value="ggml-tiny.bin">Tiny (75MB) - 最快速度</SelectItem>
                 <SelectItem value="ggml-tiny.en.bin">Tiny.en (75MB) - 英文专用</SelectItem>
                 <SelectItem value="ggml-base.bin">Base (142MB) - 平衡</SelectItem>

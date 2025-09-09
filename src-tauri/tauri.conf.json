@@ -38,7 +38,8 @@
       "bin/ffmpeg"
     ],
     "resources": [
-      "resources/ggml-silero-v5.1.2.bin"
+      "resources/ggml-silero-v5.1.2.bin",
+      "resources/ggml-tiny-q5_1.bin"
     ]
   }
 }
