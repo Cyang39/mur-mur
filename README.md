@@ -1,7 +1,13 @@
-# Tauri + React + Typescript
+<p align="center">
+  <img src="src-tauri/icons/Square310x310Logo.png" alt="MurMur Logo" width="140" />
+</p>
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+<h1 align="center">MurMur</h1>
 
-## Recommended IDE Setup
+<p align="center">
+  Cross‑platform, local speech‑to‑text desktop app built with Tauri + Next.js, powered by whisper.cpp
+</p>
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+---
+
+[Download](https://github.com/Cyang39/mur-mur/releases/latest)
