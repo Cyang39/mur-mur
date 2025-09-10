@@ -1076,6 +1076,59 @@ async fn check_model_exists(
 }
 
 #[tauri::command]
+async fn list_downloaded_models(app_handle: tauri::AppHandle) -> Result<Vec<String>, String> {
+    // 加载设置，若未配置路径则返回空列表
+    let settings = load_settings(app_handle.clone()).await
+        .map_err(|e| format!("加载设置失败: {}", e))?;
+
+    let whisper_models_path = match settings.whisper_models_path {
+        Some(p) => p,
+        None => return Ok(Vec::new()),
+    };
+
+    // 兼容可能的 file:// 前缀与首尾引号
+    let mut base = whisper_models_path.trim().to_string();
+    if base.starts_with("file://") {
+        base = base[7..].to_string();
+        if base.starts_with('/') {
+            let bytes = base.as_bytes();
+            if bytes.len() > 2 && bytes[1].is_ascii_alphabetic() && bytes[2] == b':' {
+                base = base[1..].to_string();
+            }
+        }
+    }
+    base = base.trim_matches('"').to_string();
+
+    let mut result: Vec<String> = Vec::new();
+    let dir_path = std::path::PathBuf::from(&base);
+    if !dir_path.exists() || !dir_path.is_dir() {
+        return Ok(result);
+    }
+
+    if let Ok(entries) = std::fs::read_dir(&dir_path) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_file() {
+                // 仅收集 ggml-*.bin 文件
+                let name = match path.file_name().and_then(|s| s.to_str()) {
+                    Some(n) => n.to_string(),
+                    None => continue,
+                };
+                let is_bin = path.extension().and_then(|s| s.to_str()).map(|s| s.eq_ignore_ascii_case("bin")).unwrap_or(false);
+                if is_bin && name.starts_with("ggml-") {
+                    result.push(name);
+                }
+            }
+        }
+    }
+
+    // 去重并排序，便于前端展示
+    result.sort();
+    result.dedup();
+    Ok(result)
+}
+
+#[tauri::command]
 async fn check_coreml_support(
     app_handle: tauri::AppHandle,
     model_name: String,
@@ -1186,7 +1239,8 @@ pub fn run() {
             get_app_data_info,
             open_app_data_directory,
             get_system_info_command,
-            get_vulkan_support
+            get_vulkan_support,
+            list_downloaded_models
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

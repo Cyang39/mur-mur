@@ -5,8 +5,8 @@ export function generateStaticParams() {
   return locales.map((locale) => ({ locale }))
 }
 
-export default function Page({ params }: { params: { locale: string } }) {
-  const locale = params.locale
+export default async function Page({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params
   // Redirect /[locale] -> /[locale]/home
   redirect(`/${locale}/home`)
 }

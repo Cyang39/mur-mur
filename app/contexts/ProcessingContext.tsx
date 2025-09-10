@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
+import { useTranslations } from 'next-intl'
 import { listen } from '@tauri-apps/api/event';
 
 type SelectedFileInfo = {
@@ -65,6 +66,7 @@ export function ProcessingProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<ProcessingState>(initialState);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number | null>(null);
+  const t = useTranslations('Processing')
 
   // 更新状态的函数
   const updateState = (updates: Partial<ProcessingState>) => {
@@ -153,7 +155,7 @@ export function ProcessingProvider({ children }: { children: ReactNode }) {
           updateState({
             isWhisperRunning: false,
             isProcessing: false,
-            processResult: '语音识别完成！',
+            processResult: t('completed'),
             hasSrtFile: true,
           });
         });
@@ -162,12 +164,21 @@ export function ProcessingProvider({ children }: { children: ReactNode }) {
         const unlistenError = await listen('whisper-error', (event) => {
           const error = event.payload as string;
           console.error('Whisper 错误:', error);
-          if (error.includes('失败') || error.includes('错误')) {
+          const lower = error.toLowerCase();
+          const isError =
+            error.includes('失败') ||
+            error.includes('错误') ||
+            lower.includes('error') ||
+            lower.includes('failed') ||
+            lower.includes('exception') ||
+            lower.includes('panic') ||
+            lower.includes('terminated');
+          if (isError) {
             stopTimer();
             updateState({
               isWhisperRunning: false,
               isProcessing: false,
-              processResult: `Whisper 错误: ${error}`,
+              processResult: `${t('errorPrefix')} ${error}`,
             });
           }
         });
@@ -178,7 +189,7 @@ export function ProcessingProvider({ children }: { children: ReactNode }) {
           updateState({
             isWhisperRunning: false,
             isProcessing: false,
-            processResult: '识别已手动停止',
+            processResult: t('stopped'),
           });
         });
 

@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useProcessing } from '@/contexts/ProcessingContext';
-import { Folder, FileVideo, FileAudio, Mic, Timer as TimerIcon, Save, Copy as CopyIcon, StopCircle, Globe } from 'lucide-react'
+import { Folder, FileVideo, FileAudio, Mic, Timer as TimerIcon, Save, Copy as CopyIcon, StopCircle, Globe, Bot } from 'lucide-react'
 import { 
   AlertDialog,
   AlertDialogTrigger,
@@ -365,34 +365,51 @@ export default function HomePage() {
   };
 
   const renderMainContent = () => {
+    const locked = state.isProcessing || state.isWhisperRunning
     return (
       <div className="text-center max-w-4xl mx-auto">
-        <div className="flex items-center justify-end gap-6 mt-6 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Globe className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-            <span className="text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">{tSettings('languageTitle')}</span>
-            <Select value={settings.whisper_language} onValueChange={changeLanguage}>
-              <SelectTrigger className="w-44">
-                <SelectValue placeholder={tSettings('chooseLanguage')} />
-              </SelectTrigger>
-              <SelectContent>
-                {languageOptions.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <div className="relative mt-6">
+          <div className="flex items-center justify-between gap-6 flex-wrap">
+            <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+              <Bot className="w-4 h-4" />
+              <span className="whitespace-nowrap">{t('currentModel')}</span>
+              <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
+                {settings.whisper_model}
+              </code>
+            </div>
+            <div className="flex items-center gap-6 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                <span className="text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">{tSettings('languageTitle')}</span>
+                <Select value={settings.whisper_language} onValueChange={changeLanguage}>
+                  <SelectTrigger className="w-44" disabled={locked}>
+                    <SelectValue placeholder={tSettings('chooseLanguage')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {languageOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <span className="text-sm text-gray-600 dark:text-gray-300">{t('noGpu')}</span>
+              <Switch checked={!!settings.disable_gpu} onCheckedChange={toggleNoGpu} disabled={locked} />
+              <span className="text-sm text-gray-600 dark:text-gray-300">{t('vad')}</span>
+              <Switch checked={!!settings.enable_vad} onCheckedChange={toggleVad} disabled={locked} />
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-600 dark:text-gray-300">{t('threads')}: {settings.thread_count}</span>
+                <div className={locked ? 'pointer-events-none opacity-60' : ''}>
+                  <Slider min={1} max={8} step={1} value={[settings.thread_count]} onValueChange={changeThreads} />
+                </div>
+              </div>
+            </div>
           </div>
-          <span className="text-sm text-gray-600 dark:text-gray-300">{t('noGpu')}</span>
-          <Switch checked={!!settings.disable_gpu} onCheckedChange={toggleNoGpu} />
-          <span className="text-sm text-gray-600 dark:text-gray-300">{t('vad')}</span>
-          <Switch checked={!!settings.enable_vad} onCheckedChange={toggleVad} />
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-600 dark:text-gray-300">{t('threads')}: {settings.thread_count}</span>
-            <Slider min={1} max={8} step={1} value={[settings.thread_count]} onValueChange={changeThreads} />
+          {locked && (
+            <div className="absolute inset-0 rounded-lg bg-gray-200/50 dark:bg-gray-900/40 backdrop-blur-[1px] z-10" aria-hidden="true" />
+          )}
           </div>
-        </div>
         <div 
           className={`border-2 border-dashed rounded-xl p-16 my-10 transition-all duration-300 ease-in-out cursor-pointer min-h-[200px] flex flex-col items-center justify-center ${
             isDragging ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 scale-105' : 

@@ -3,6 +3,7 @@
     "noGpu": "不使用 GPU",
     "threads": "线程",
     "vad": "VAD",
+    "currentModel": "当前模型：",
     "dragHere": "将视频或音频文件拖拽到此处",
     "or": "或者",
     "chooseFile": "选择文件",
@@ -85,5 +86,46 @@
     "models": "AI 模型",
     "settings": "设置",
     "about": "关于"
+  },
+  "Processing": {
+    "completed": "语音识别完成！",
+    "stopped": "识别已手动停止",
+    "errorPrefix": "Whisper 错误:"
+  },
+  "Models": {
+    "pageTitle": "选择 Whisper 模型",
+    "recommended": "推荐",
+    "downloaded": "已下载",
+    "tiny": "Tiny",
+    "small": "Small",
+    "medium": "Medium",
+    "large": "Large",
+    "fileName": "文件名："
+  },
+  "About": {
+    "pageTitle": "关于",
+    "pageSubtitle": "了解 Murmur 应用程序",
+    "authorTitle": "作者",
+    "projectLabel": "项目",
+    "authorLabel": "作者",
+    "licenseTitle": "许可证",
+    "licenseDesc": "本项目基于开源许可证发布，遵循开源社区的最佳实践和协作精神。",
+    "systemInfoTitle": "系统信息",
+    "systemInfoDesc": "当前系统和应用程序的详细信息",
+    "loading": "加载中...",
+    "loadFailed": "无法加载系统信息",
+    "openInBrowser": "打开",
+    "openFailed": "无法在浏览器中打开",
+    "os": "操作系统",
+    "cpu": "处理器",
+    "memory": "内存",
+    "gpu": "GPU",
+    "supported": "支持",
+    "notSupported": "不支持",
+    "deviceCount": "设备数",
+    "vulkanNotDetected": "未检测到 Vulkan 运行库",
+    "appVersion": "应用版本",
+    "tauriVersion": "Tauri 版本",
+    "refreshSystemInfo": "刷新系统信息"
   }
 }

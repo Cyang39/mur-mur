@@ -19,7 +19,7 @@ export interface Settings {
 
 const DEFAULTS: Settings = {
   whisper_models_path: null,
-  app_locale: 'zh-CN',
+  app_locale: 'en',
   whisper_language: 'auto',
   whisper_model: 'ggml-tiny-q5_1.bin',
   enable_vad: false,

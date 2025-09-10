@@ -3,6 +3,7 @@
     "noGpu": "No GPU",
     "threads": "Threads",
     "vad": "VAD",
+    "currentModel": "Model:",
     "dragHere": "Drag a video or audio file here",
     "or": "or",
     "chooseFile": "Choose File",
@@ -85,5 +86,46 @@
     "models": "AI Models",
     "settings": "Settings",
     "about": "About"
+  },
+  "Processing": {
+    "completed": "Recognition completed!",
+    "stopped": "Recognition manually stopped",
+    "errorPrefix": "Whisper error:"
+  },
+  "Models": {
+    "pageTitle": "Choose Whisper Model",
+    "recommended": "Recommended",
+    "downloaded": "Downloaded",
+    "tiny": "Tiny",
+    "small": "Small",
+    "medium": "Medium",
+    "large": "Large",
+    "fileName": "File name:"
+  },
+  "About": {
+    "pageTitle": "About",
+    "pageSubtitle": "Learn about the Murmur app",
+    "authorTitle": "Author",
+    "projectLabel": "Project",
+    "authorLabel": "Author",
+    "licenseTitle": "License",
+    "licenseDesc": "This project is open source and follows community best practices.",
+    "systemInfoTitle": "System Info",
+    "systemInfoDesc": "Details about your system and the app",
+    "loading": "Loading...",
+    "loadFailed": "Failed to load system info",
+    "openInBrowser": "Open",
+    "openFailed": "Failed to open in browser",
+    "os": "Operating System",
+    "cpu": "Processor",
+    "memory": "Memory",
+    "gpu": "GPU",
+    "supported": "Supported",
+    "notSupported": "Not supported",
+    "deviceCount": "Devices",
+    "vulkanNotDetected": "Vulkan runtime not detected",
+    "appVersion": "App Version",
+    "tauriVersion": "Tauri Version",
+    "refreshSystemInfo": "Refresh System Info"
   }
 }
