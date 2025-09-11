@@ -292,6 +292,30 @@ export default function HomePage() {
       alert(`保存 SRT 文件失败：${error}`);
     }
   };
+
+  const saveLrcFile = async () => {
+    if (!currentAudioPath) {
+      alert('未找到音频文件路径');
+      return;
+    }
+    
+    try {
+      const targetDirectory = await invoke('select_directory');
+      if (!targetDirectory) {
+        return;
+      }
+      
+      const savedPath = await invoke('save_lrc_file', {
+        audioFilePath: currentAudioPath,
+        targetDirectory: targetDirectory
+      });
+      
+      alert(`LRC 歌词文件已保存到：\n${savedPath}`);
+    } catch (error) {
+      console.error('保存 LRC 文件失败:', error);
+      alert(`保存 LRC 文件失败：${error}`);
+    }
+  };
   
   const checkModelStatus = async () => {
     if (!settings.whisper_model) return;
@@ -573,6 +597,16 @@ export default function HomePage() {
                     disabled={isWhisperRunning}
                   >
                     <Save className="w-4 h-4 mr-1" /> {t('saveSrt')}
+                  </Button>
+                )}
+                {hasSrtFile && (
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    onClick={saveLrcFile}
+                    disabled={isWhisperRunning}
+                  >
+                    <Save className="w-4 h-4 mr-1" /> {t('saveLrc')}
                   </Button>
                 )}
                 <Button 

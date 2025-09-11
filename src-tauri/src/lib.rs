@@ -912,7 +912,8 @@ async fn start_whisper_recognition(
         model_file.to_string_lossy().to_string(),
         "--file".to_string(),
         audio_file_path.clone(),
-        "--output-srt".to_string(), // 添加 SRT 字幕文件输出参数
+        "--output-srt".to_string(), // 输出 SRT 字幕
+        "--output-lrc".to_string(), // 输出 LRC 歌词
         "--language".to_string(),
         settings.whisper_language.clone(), // 总是传递语言参数，包括 "auto"
         "--print-progress".to_string() // 推理进度
@@ -1215,6 +1216,40 @@ async fn save_srt_file(
     }
 }
 
+#[tauri::command]
+async fn save_lrc_file(
+    _app_handle: tauri::AppHandle,
+    audio_file_path: String,
+    target_directory: String,
+) -> Result<String, String> {
+    // 根据音频文件路径生成 LRC 文件路径
+    let lrc_file_path = format!("{}.lrc", audio_file_path);
+    let lrc_path = std::path::Path::new(&lrc_file_path);
+
+    // 检查 LRC 文件是否存在
+    if !lrc_path.exists() {
+        return Err("未找到 LRC 歌词文件，请确保语音识别已完成并启用了 --output-lrc".to_string());
+    }
+
+    // 获取源文件名
+    let file_name = lrc_path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or("无效的 LRC 文件名")?;
+
+    // 构建目标文件路径
+    let target_path = std::path::Path::new(&target_directory).join(file_name);
+
+    // 复制 LRC 文件
+    match std::fs::copy(&lrc_path, &target_path) {
+        Ok(_) => {
+            let target_path_str = target_path.to_string_lossy().to_string();
+            Ok(target_path_str)
+        }
+        Err(e) => Err(format!("复制 LRC 文件失败: {}", e))
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -1236,6 +1271,7 @@ pub fn run() {
             check_model_exists,
             check_coreml_support,
             save_srt_file,
+            save_lrc_file,
             get_app_data_info,
             open_app_data_directory,
             get_system_info_command,
