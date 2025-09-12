@@ -7,6 +7,11 @@
       "bin/whisper-cli",
       "bin/whisper-cli-vulkan",
       "bin/ffmpeg"
+    ],
+    "resources": [
+      "resources/ggml-silero-v5.1.2.bin",
+      "resources/ggml-tiny-q5_1.bin",
+      "libwinpthread-1.dll"
     ]
   }
 }
